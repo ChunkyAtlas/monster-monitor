@@ -26,7 +26,7 @@ The plugin logs any unknown death animations to help improve the accuracy and co
 ### How to Send Log Files:
 
 1. **Locate the Log Files**: Navigate to the directory listed above to find the log files.
-2. **Send the Files**: Send the `unknown_animations.log` file (and optionally the `monster_monitor_log.json` file) to the plugin developer via monstermonitor@proton.me.
+2. **Send the Files**: Send the `unknown_death_animations.json` file (and optionally the `monster_monitor_log.json` file) to me via monstermonitor@proton.me.
 3. **Update the Plugin**: I will use these logs to update the plugin with new death animation IDs, improving its functionality.
 
 
