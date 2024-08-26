@@ -20,7 +20,7 @@ The plugin logs any unknown death animations to help improve the accuracy and co
 ### Log File Locations:
 
 - **Main Log File**: `~/.runelite/monstermonitor/your_player_name/monster_monitor_log.json`
-- **Unknown Animations Log**: `~/.runelite/monstermonitor/your_player_name/unknown_animations.log`
+- **Unknown Animations Log**: `~/.runelite/monstermonitor/your_player_name/unknown_death_animations.json`
 
 
 ### How to Send Log Files:
