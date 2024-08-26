@@ -14,7 +14,7 @@ public class DeathAnimationIDs
     public static final int ZYGOMITE_DEATH = 3327;
     public static final int IMP_DEATH = 172;
     public static final int CORP_DEATH = 1676;
-    //public static final int DEATH = 836; //Any "MAN/WOMAN character (includes guards/black knights etc)
+    public static final int DEATH = 836; //Any "MAN/WOMAN character (includes guards/black knights etc)
     public static final int DWARF_DEATH = 102;
     public static final int NEW_DEATH_ANIMATION_1580 = 1580;
 
@@ -41,7 +41,7 @@ public class DeathAnimationIDs
         DEATH_ANIMATIONS.add(ZYGOMITE_DEATH);
         DEATH_ANIMATIONS.add(IMP_DEATH);
         DEATH_ANIMATIONS.add(CORP_DEATH);
-        //DEATH_ANIMATIONS.add(DEATH);
+        DEATH_ANIMATIONS.add(DEATH);
         DEATH_ANIMATIONS.add(DWARF_DEATH);
         DEATH_ANIMATIONS.add(NEW_DEATH_ANIMATION_1580);
         DEATH_ANIMATIONS.add(RAM_DEATH);
