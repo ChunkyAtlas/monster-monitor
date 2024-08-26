@@ -30,20 +30,21 @@ public class NpcData
         this.notifyOnLimit = false; // Default to not notify
     }
 
+    // Increment the total kill count and the kill count towards the limit
     public void incrementKillCount()
     {
         this.totalKillCount++;
         this.killCountForLimit++;
     }
 
-    // Resets the total kill count and progress towards the limit
+    // Reset the total kill count and progress towards the limit
     public void resetKillCount()
     {
         this.totalKillCount = 0;
         this.killCountForLimit = 0;
     }
 
-    // Resets only the progress towards the limit
+    // Reset only the progress towards the limit
     public void resetKillCountForLimit()
     {
         this.killCountForLimit = 0;

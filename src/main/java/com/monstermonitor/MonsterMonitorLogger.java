@@ -176,9 +176,9 @@ public class MonsterMonitorLogger
         {
             // Log in the unknown animations file
             unknownAnimations.put(npcName, animationId);
-            saveUnknownAnimations();
+            saveUnknownAnimations(); // Save the unknown animations log
 
-            // Log the NPC death in the main log file and increment kill count
+            // Also log the NPC death in the main log file
             logDeath(npcName, animationId); // This will log the kill like any other NPC
         }
     }

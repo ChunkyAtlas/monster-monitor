@@ -16,7 +16,7 @@ public class DeathAnimationIDs
     public static final int CORP_DEATH = 1676;
     public static final int DEATH = 836; //Any "MAN/WOMAN character (includes guards/black knights etc)
     public static final int DWARF_DEATH = 102;
-    public static final int NEW_DEATH_ANIMATION_1580 = 1580;
+    public static final int ICEFIEND_DEATH = 1580;
 
     // Newly discovered death animations
     public static final int RAM_DEATH = 5336;
@@ -30,10 +30,15 @@ public class DeathAnimationIDs
     public static final int RAT_DEATH = 2707;
     public static final int GOBLIN2_DEATH = 6190;
     public static final int GIANT_SPIDER_DEATH = 5329;
+    public static final int GIANT_RAT_DEATH = 4935;
+    public static final int FROG_DEATH = 1795;
+
 
     public static final Set<Integer> DEATH_ANIMATIONS = new HashSet<>();
 
     static {
+        DEATH_ANIMATIONS.add(GIANT_RAT_DEATH);
+        DEATH_ANIMATIONS.add(FROG_DEATH);
         DEATH_ANIMATIONS.add(DUCK_DEATH);
         DEATH_ANIMATIONS.add(RAT_DEATH);
         DEATH_ANIMATIONS.add(GOBLIN2_DEATH);
@@ -51,7 +56,7 @@ public class DeathAnimationIDs
         DEATH_ANIMATIONS.add(CORP_DEATH);
         DEATH_ANIMATIONS.add(DEATH);
         DEATH_ANIMATIONS.add(DWARF_DEATH);
-        DEATH_ANIMATIONS.add(NEW_DEATH_ANIMATION_1580);
+        DEATH_ANIMATIONS.add(ICEFIEND_DEATH);
         DEATH_ANIMATIONS.add(RAM_DEATH);
         DEATH_ANIMATIONS.add(SKELETON_DEATH);
         DEATH_ANIMATIONS.add(SCORPION_DEATH);

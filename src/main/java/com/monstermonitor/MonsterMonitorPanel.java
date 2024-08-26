@@ -50,6 +50,7 @@ public class MonsterMonitorPanel extends PluginPanel
         add(scrollPane, BorderLayout.SOUTH);
     }
 
+    // Update the panel with the list of tracked NPCs
     public void updatePanel()
     {
         npcListPanel.removeAll();
@@ -96,6 +97,7 @@ public class MonsterMonitorPanel extends PluginPanel
         repaint();
     }
 
+    // Helper method to add an individual NPC panel
     private void addNpcPanel(NpcData npcData)
     {
         JPanel npcPanel = new JPanel(new BorderLayout());
