@@ -63,6 +63,7 @@ public class MonsterMonitorPlugin extends Plugin
 
     // Map to track recent interactions with NPCs
     private final Map<Integer, Boolean> npcInteractingMap = new HashMap<>();
+    private final Map<Integer, Integer> npcLastValidAnimationMap = new HashMap<>();
 
     @Provides
     MonsterMonitorConfig provideConfig(ConfigManager configManager)
@@ -73,7 +74,16 @@ public class MonsterMonitorPlugin extends Plugin
     @Override
     protected void startUp() throws Exception
     {
-        updateOverlayVisibility(); // Apply the overlay visibility setting
+        clientThread.invoke(() -> {
+            logger.initialize(); // Initialize logger with player-specific directory
+            if (client.getLocalPlayer() != null)
+            {
+                logger.loadLog(); // Load log data only if the player is initialized
+                updateOverlay(); // Ensure the overlay is updated immediately upon startup
+                panel.updatePanel(); // Initial panel update
+                initialized = true; // Mark as initialized
+            }
+        });
 
         final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/net/runelite/client/plugins/MonsterMonitor/icon.png");
         navButton = NavigationButton.builder()
@@ -83,13 +93,7 @@ public class MonsterMonitorPlugin extends Plugin
                 .build();
         clientToolbar.addNavigation(navButton);
 
-        clientThread.invokeLater(() -> {
-            logger.initialize(); // Initialize logger with player-specific directory
-            logger.loadLog(); // Load log data
-            updateOverlay(); // Ensure the overlay is updated immediately upon startup
-            panel.updatePanel(); // Initial panel update
-            initialized = true; // Mark as initialized
-        });
+        updateOverlayVisibility(); // Apply the overlay visibility setting
     }
 
     @Override
@@ -124,14 +128,14 @@ public class MonsterMonitorPlugin extends Plugin
             int animationId = npc.getAnimation();
             String npcName = npc.getName();
 
-            // Skip logging if the animation ID is -1 (idle or no animation)
-            if (animationId == -1)
-            {
-                return;
-            }
-
             // Track if the player was recently interacting with this NPC
             boolean wasInteracting = npcInteractingMap.getOrDefault(npcIndex, false);
+
+            // Only update the last valid animation if it's not -1
+            if (animationId != -1)
+            {
+                npcLastValidAnimationMap.put(npcIndex, animationId);
+            }
 
             clientThread.invokeLater(() -> {
                 if (isPlayerKillingNpc(npc))
@@ -141,20 +145,10 @@ public class MonsterMonitorPlugin extends Plugin
                     if (DeathAnimationIDs.isDeathAnimation(animationId))
                     {
                         lastKilledNpcName = npcName; // Track the last killed NPC
-                        logger.logDeath(npcName, animationId);
+                        logger.logDeath(npcName, animationId); // Log the death
                         updateOverlay();
                         panel.updatePanel();
-                        checkKillLimit(npcName);
                     }
-                }
-                else if (wasInteracting && DeathAnimationIDs.isDeathAnimation(animationId))
-                {
-                    // If the player was recently interacting and now it's playing any known death animation, log it
-                    lastKilledNpcName = npcName; // Track the last killed NPC
-                    logger.logDeath(npcName, animationId);
-                    updateOverlay();
-                    panel.updatePanel();
-                    checkKillLimit(npcName);
                 }
                 else
                 {
@@ -168,20 +162,28 @@ public class MonsterMonitorPlugin extends Plugin
     public void onNpcDespawned(NpcDespawned event)
     {
         NPC npc = event.getNpc();
-        int lastAnimationId = npc.getAnimation();
+        int npcIndex = npc.getIndex();
 
-        // Skip logging for animation ID -1
-        if (lastAnimationId == -1)
-        {
-            return;
-        }
+        // Retrieve the last valid animation ID before despawn
+        int lastAnimationId = npcLastValidAnimationMap.getOrDefault(npcIndex, -1);
 
-        // Ensure we only log the NPC if the player was involved
-        if (isPlayerKillingNpc(npc))
+        // Ensure we only log the NPC if the player was involved and there was a valid last animation
+        if (lastAnimationId != -1 && isPlayerKillingNpc(npc))
         {
             String npcName = npc.getName();
-            logger.logUnknownAnimation(npcName, lastAnimationId);
+            logger.logUnknownAnimations(npcName, lastAnimationId);
+
+            // Update the overlay and panel to reflect the new NPC kill
+            updateOverlay();
+            panel.updatePanel();
+
+            // Check kill limit only for unknown animations
+            checkKillLimit(npcName);
         }
+
+        // Clean up after despawn
+        npcLastValidAnimationMap.remove(npcIndex);
+        npcInteractingMap.remove(npcIndex);
     }
 
     private boolean isPlayerKillingNpc(NPC npc)
@@ -193,14 +195,21 @@ public class MonsterMonitorPlugin extends Plugin
 
         Player localPlayer = client.getLocalPlayer();
 
-        // 1. Check if the NPC is directly interacting with the player
+        // Check if the NPC is currently interacting with the player
         if (npc.getInteracting() == localPlayer)
         {
             return true;
         }
 
-        // 2. Check if the player is interacting with the NPC
+        // Check if the player is currently interacting with the NPC
         if (localPlayer.getInteracting() == npc)
+        {
+            return true;
+        }
+
+        // Only consider recent interactions if they were directly involving the player
+        boolean wasInteractingWithPlayer = npcInteractingMap.getOrDefault(npc.getIndex(), false);
+        if (wasInteractingWithPlayer)
         {
             return true;
         }
@@ -226,15 +235,22 @@ public class MonsterMonitorPlugin extends Plugin
     private void checkKillLimit(String npcName)
     {
         NpcData npcData = logger.getNpcLog().get(npcName);
+        if (npcData == null)
+        {
+            return; // No data available for this NPC, skip checking
+        }
+
         int killLimit = npcData.getKillLimit();
         int killCountForLimit = npcData.getKillCountForLimit();
 
         if (killLimit > 0 && killCountForLimit >= killLimit && npcData.isNotifyOnLimit())
         {
+            // Notify the player
             Toolkit.getDefaultToolkit().beep();
             client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Kill limit reached for " + npcName, null);
         }
     }
+
 
     public List<NpcData> getTrackedNpcs()
     {

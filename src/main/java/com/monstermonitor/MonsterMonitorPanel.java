@@ -57,32 +57,41 @@ public class MonsterMonitorPanel extends PluginPanel
         List<NpcData> trackedNpcs = new ArrayList<>(plugin.getTrackedNpcs());
         String lastKilledNpcName = plugin.getLastKilledNpcName(); // Get the last killed NPC's name
 
-        // Sort NPCs, but keep last killed NPC on top
-        NpcData lastKilledNpc = null;
+        // Sort NPCs, but keep last killed NPC and unknown animation NPCs on top
+        List<NpcData> topNpcs = new ArrayList<>();
+        List<NpcData> otherNpcs = new ArrayList<>();
+
+        int totalKills = 0; // Initialize the total kills counter
+
         for (NpcData npcData : trackedNpcs)
         {
-            if (npcData.getNpcName().equals(lastKilledNpcName))
+            totalKills += npcData.getTotalKillCount(); // Accumulate total kills
+
+            if (npcData.getNpcName().equals(lastKilledNpcName) || !DeathAnimationIDs.isDeathAnimation(npcData.getDeathAnimationId()))
             {
-                lastKilledNpc = npcData;
-                break;
+                topNpcs.add(npcData);
+            }
+            else
+            {
+                otherNpcs.add(npcData);
             }
         }
 
-        if (lastKilledNpc != null)
-        {
-            trackedNpcs.remove(lastKilledNpc);
-            addNpcPanel(lastKilledNpc); // Add the last killed NPC at the top
-        }
-
-        int totalKills = lastKilledNpc != null ? lastKilledNpc.getTotalKillCount() : 0;
-
-        for (NpcData npcData : trackedNpcs)
+        // Add top NPCs (last killed or unknown) to the panel first
+        for (NpcData npcData : topNpcs)
         {
             addNpcPanel(npcData);
-            totalKills += npcData.getTotalKillCount();
         }
 
+        // Add other NPCs to the panel
+        for (NpcData npcData : otherNpcs)
+        {
+            addNpcPanel(npcData);
+        }
+
+        // Update the total kills label
         totalKillCountLabel.setText("Total kills: " + totalKills);
+
         revalidate();
         repaint();
     }
@@ -101,7 +110,7 @@ public class MonsterMonitorPanel extends PluginPanel
         optionsPanel.setBackground(Color.DARK_GRAY);
 
         // SET LIMIT Checkbox
-        JCheckBox setLimitCheckbox = new JCheckBox("SET LIMIT");
+        JCheckBox setLimitCheckbox = new JCheckBox("Set Limit");
         setLimitCheckbox.setForeground(Color.LIGHT_GRAY);
         setLimitCheckbox.setBackground(Color.DARK_GRAY);
         setLimitCheckbox.setSelected(npcData.isLimitSet());
@@ -131,7 +140,7 @@ public class MonsterMonitorPanel extends PluginPanel
         limitSpinner.setEnabled(npcData.isLimitSet()); // Enable only if the limit is set
 
         // NOTIFY Checkbox
-        JCheckBox notifyCheckbox = new JCheckBox("NOTIFY");
+        JCheckBox notifyCheckbox = new JCheckBox("Notify");
         notifyCheckbox.setForeground(Color.LIGHT_GRAY);
         notifyCheckbox.setBackground(Color.DARK_GRAY);
         notifyCheckbox.setSelected(npcData.isNotifyOnLimit());

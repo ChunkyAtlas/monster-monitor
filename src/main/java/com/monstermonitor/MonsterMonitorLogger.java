@@ -3,6 +3,7 @@ package com.monstermonitor;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import net.runelite.api.Client;
+import net.runelite.api.Player;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -16,11 +17,12 @@ import java.util.Map;
 public class MonsterMonitorLogger
 {
     private static final String BASE_LOG_DIR = System.getProperty("user.home") + "/.runelite/monstermonitor";
+    private final Map<String, Integer> unknownAnimations = new HashMap<>(); // Map to store unknown animations
     private final Map<String, NpcData> npcLog = new HashMap<>(); // Log to store NPC data
     private final Gson gson = new Gson();
     private String playerLogDir; // Directory to store logs specific to the player
     private String logFilePath; // Path to the main log file
-    private String unknownLogFilePath; // Path to log unknown animations
+    private String unknownAnimationsFilePath; // Path to log unknown animations
 
     @Inject
     private Client client;
@@ -28,30 +30,64 @@ public class MonsterMonitorLogger
     // Initialize the logger with directories based on the player's name
     public void initialize()
     {
-        String playerName = client.getLocalPlayer().getName();
+        Player localPlayer = client.getLocalPlayer();
+        if (localPlayer == null)
+        {
+            return; // Exit early if the player is not yet initialized
+        }
+
+        String playerName = localPlayer.getName();
         playerLogDir = BASE_LOG_DIR + "/" + playerName;
         logFilePath = playerLogDir + "/monster_monitor_log.json";
-        unknownLogFilePath = playerLogDir + "/unknown_animations.log";
+        unknownAnimationsFilePath = playerLogDir + "/unknown_death_animations.json";
 
         File directory = new File(playerLogDir);
         if (!directory.exists())
         {
             directory.mkdirs(); // Create the directory if it doesn't exist
         }
+
+        // Ensure the unknown animations file is created, even if not needed right now
+        createEmptyFileIfNotExists(unknownAnimationsFilePath);
+        createEmptyFileIfNotExists(logFilePath);
+
+        // Load existing data
+        loadLog();
+        loadUnknownAnimations();
+    }
+
+    // Helper method to create an empty file if it doesn't exist
+    private void createEmptyFileIfNotExists(String filePath)
+    {
+        File file = new File(filePath);
+        if (!file.exists())
+        {
+            try
+            {
+                file.createNewFile();
+            }
+            catch (IOException e)
+            {
+                e.printStackTrace();
+            }
+        }
     }
 
     // Load the log from the file, or create a new file if it doesn't exist
     public void loadLog()
     {
-        initialize();
+        if (logFilePath == null)
+        {
+            return;
+        }
+
         File logFile = new File(logFilePath);
         if (!logFile.exists())
         {
             try
             {
                 logFile.createNewFile();
-                addDummyData();  // Add dummy data to the log on first use
-                saveLog();  // Save the log with dummy data
+                saveLog();  // Save the log (with initial empty data)
             }
             catch (IOException e)
             {
@@ -74,16 +110,99 @@ public class MonsterMonitorLogger
         }
     }
 
-    // Add dummy data to the log file (for testing purposes)
-    private void addDummyData()
+    private void loadUnknownAnimations()
     {
-        NpcData dummyNpc = new NpcData("Man", 836);
-        npcLog.put("Man", dummyNpc);
+        if (unknownAnimationsFilePath == null)
+        {
+            return;
+        }
+
+        File unknownAnimationsFile = new File(unknownAnimationsFilePath);
+        if (!unknownAnimationsFile.exists())
+        {
+            return;
+        }
+
+        try (FileReader reader = new FileReader(unknownAnimationsFile))
+        {
+            Type type = new TypeToken<Map<String, Integer>>(){}.getType();
+            Map<String, Integer> loadedUnknownAnimations = gson.fromJson(reader, type);
+            if (loadedUnknownAnimations != null)
+            {
+                unknownAnimations.putAll(loadedUnknownAnimations);
+            }
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
     }
 
-    // Save the current state of the log to the file
+    private void saveUnknownAnimations()
+    {
+        if (unknownAnimationsFilePath == null)
+        {
+            return;
+        }
+
+        try
+        {
+            File file = new File(unknownAnimationsFilePath);
+            if (!file.exists())
+            {
+                file.createNewFile();  // Explicitly create the file if it doesn't exist
+            }
+
+            try (FileWriter writer = new FileWriter(file))
+            {
+                gson.toJson(unknownAnimations, writer);
+            }
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    public void logUnknownAnimations(String npcName, int animationId)
+    {
+        if (animationId == -1)
+        {
+            return; // Do not log if the animation ID is -1
+        }
+
+        // Check if the animation is already recognized
+        if (!DeathAnimationIDs.isDeathAnimation(animationId))
+        {
+            // Log in the unknown animations file
+            unknownAnimations.put(npcName, animationId);
+            saveUnknownAnimations();
+
+            // Log the NPC death in the main log file and increment kill count
+            logDeath(npcName, animationId); // This will log the kill like any other NPC
+        }
+    }
+
+    public int getLastUnknownAnimations(String npcName)
+    {
+        return unknownAnimations.getOrDefault(npcName, -1);
+    }
+
+    public void logDeath(String npcName, int animationId)
+    {
+        NpcData npcData = npcLog.getOrDefault(npcName, new NpcData(npcName, animationId));
+        npcData.incrementKillCount(); // Increment the kill count
+        npcLog.put(npcName, npcData); // Update the NPC log
+        saveLog(); // Save the updated log to disk immediately
+    }
+
     public void saveLog()
     {
+        if (logFilePath == null)
+        {
+            return;
+        }
+
         try (FileWriter writer = new FileWriter(new File(logFilePath)))
         {
             gson.toJson(npcLog, writer);
@@ -94,61 +213,11 @@ public class MonsterMonitorLogger
         }
     }
 
-    // Log a death for the specified NPC and increment the kill count
-    public void logDeath(String npcName, int animationId)
-    {
-        NpcData npcData = npcLog.getOrDefault(npcName, new NpcData(npcName, animationId));
-        npcData.incrementKillCount();
-        npcLog.put(npcName, npcData);
-        saveLog();
-    }
-
-    // Log unknown animations to a separate file
-    public void logUnknownAnimation(String npcName, int animationId)
-    {
-        File unknownLogFile = new File(unknownLogFilePath);
-        if (!unknownLogFile.exists())
-        {
-            try
-            {
-                unknownLogFile.createNewFile();  // Create the file if it does not exist
-            }
-            catch (IOException e)
-            {
-                e.printStackTrace();
-                return;
-            }
-        }
-
-        try (FileWriter writer = new FileWriter(unknownLogFile, true)) // Append mode
-        {
-            writer.write("Unknown death animation detected for NPC: " + npcName + " (Animation ID: " + animationId + ")\n");
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-        }
-    }
-
-    // Get the kill limit for a specific NPC
-    public int getKillLimit(String npcName)
-    {
-        return npcLog.containsKey(npcName) ? npcLog.get(npcName).getKillLimit() : 0;
-    }
-
-    // Get the progress towards the kill limit for a specific NPC
-    public int getKillCountForLimit(String npcName)
-    {
-        return npcLog.containsKey(npcName) ? npcLog.get(npcName).getKillCountForLimit() : 0;
-    }
-
-    // Return the entire NPC log
     public Map<String, NpcData> getNpcLog()
     {
         return npcLog;
     }
 
-    // Update the NPC data in the log and save it
     public void updateNpcData(NpcData npcData)
     {
         npcLog.put(npcData.getNpcName(), npcData);
