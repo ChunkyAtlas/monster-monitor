@@ -20,13 +20,13 @@ The plugin logs any unknown death animations to help improve the accuracy and co
 ### Log File Locations:
 
 - **Main Log File**: `~/.runelite/monstermonitor/your_player_name/monster_monitor_log.json`
-- **Unknown Animations Log**: `~/.runelite/monstermonitor/your_player_name/unknown_animations.log`
+- **Unknown Animations Log**: `~/.runelite/monstermonitor/your_player_name/unknown_death_animations.json`
 
 
 ### How to Send Log Files:
 
 1. **Locate the Log Files**: Navigate to the directory listed above to find the log files.
-2. **Send the Files**: Send the `unknown_animations.log` file (and optionally the `monster_monitor_log.json` file) to the plugin developer via monstermonitor@proton.me.
+2. **Send the Files**: Send the `unknown_death_animations.json` file (and optionally the `monster_monitor_log.json` file) to me via monstermonitor@proton.me.
 3. **Update the Plugin**: I will use these logs to update the plugin with new death animation IDs, improving its functionality.
 
 
