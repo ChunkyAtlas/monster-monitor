@@ -147,6 +147,7 @@ public class MonsterMonitorPlugin extends Plugin
             {
                 npcAwaitingDeathAnimation.put(npcIndex, true);
                 npcDeathAnimationAttempts.put(npcIndex, 0);
+                npcLastInteractionTimeMap.put(npcIndex, System.currentTimeMillis());
             }
 
             // Increment attempts and handle timeout for death animation
@@ -155,7 +156,7 @@ public class MonsterMonitorPlugin extends Plugin
                 int attempts = npcDeathAnimationAttempts.getOrDefault(npcIndex, 0);
                 if (attempts >= MAX_DEATH_ANIMATION_ATTEMPTS)
                 {
-                    logDeathAnimation(npcIndex, npc.getName(), -1); // Log as unknown
+                    logDeathAnimation(npcIndex, npc.getName(), npcLastValidAnimationMap.getOrDefault(npcIndex, -1)); // Log last known or unknown
                 }
                 else
                 {
@@ -205,6 +206,27 @@ public class MonsterMonitorPlugin extends Plugin
     {
         NPC npc = event.getNpc();
         int npcIndex = npc.getIndex();
+
+        // Log if the NPC was expected to perform a death animation but despawned instead
+        if (npcAwaitingDeathAnimation.containsKey(npcIndex))
+        {
+            int lastAnimationId = npcLastValidAnimationMap.getOrDefault(npcIndex, -1);
+            if (lastAnimationId == -1)
+            {
+                // If no valid animation was captured, log as unknown
+                logger.logUnknownAnimations(npc.getName(), -1);
+            }
+            else if (!DeathAnimationIDs.isDeathAnimation(lastAnimationId))
+            {
+                // If a non-death animation was captured, log it as unknown
+                logger.logUnknownAnimations(npc.getName(), lastAnimationId);
+            }
+            else
+            {
+                // Otherwise, log the known animation
+                logDeathAnimation(npcIndex, npc.getName(), lastAnimationId);
+            }
+        }
 
         // Cleanup NPC tracking data after it despawns
         cleanupNpcTracking(npcIndex);

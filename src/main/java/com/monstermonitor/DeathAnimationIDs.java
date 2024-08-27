@@ -32,11 +32,13 @@ public class DeathAnimationIDs
     public static final int GIANT_SPIDER_DEATH = 5329;
     public static final int GIANT_RAT_DEATH = 4935;
     public static final int FROG_DEATH = 1795;
+    public static final int SPIDER_DEATH = 6251;
 
 
     public static final Set<Integer> DEATH_ANIMATIONS = new HashSet<>();
 
     static {
+        DEATH_ANIMATIONS.add(SPIDER_DEATH);
         DEATH_ANIMATIONS.add(GIANT_RAT_DEATH);
         DEATH_ANIMATIONS.add(FROG_DEATH);
         DEATH_ANIMATIONS.add(DUCK_DEATH);
