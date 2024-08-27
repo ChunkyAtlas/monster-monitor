@@ -66,8 +66,23 @@ public class DeathAnimationIDs
         DEATH_ANIMATIONS.add(GOBLIN_DEATH);
     }
 
+    // Set to store NPC names requiring special handling
+    private static final Set<String> specialHandledNpcs = new HashSet<>();
+
+    static {
+        // Initialize the set with known NPCs that need special handling
+        specialHandledNpcs.add("Imp");
+        // Add other special NPC names as needed... (Which we will probably)
+    }
+
     public static boolean isDeathAnimation(int animationId)
     {
         return DEATH_ANIMATIONS.contains(animationId) && animationId != -1;
+    }
+
+    // Method to check if an NPC requires special handling
+    public static boolean isSpecialHandledNpc(String npcName)
+    {
+        return specialHandledNpcs.contains(npcName);
     }
 }

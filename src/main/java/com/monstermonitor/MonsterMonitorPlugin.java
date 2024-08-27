@@ -70,9 +70,15 @@ public class MonsterMonitorPlugin extends Plugin
     private final Map<Integer, Boolean> npcAwaitingDeathAnimation = new HashMap<>(); // Tracks NPCs awaiting death animation
     private final Map<Integer, Integer> npcDeathAnimationAttempts = new HashMap<>(); // Tracks attempts to get death animation
     private final Map<Integer, Boolean> npcLoggedMap = new HashMap<>(); // Track if an NPC's death has already been logged
+    private final Map<Integer, Long> npcDeathStartTimeMap = new HashMap<>(); // Track when death animation started
+
+    // Flag to prevent double logging
+    private final Map<Integer, Boolean> npcFullyLoggedMap = new HashMap<>();
 
     private static final int INTERACTION_TIMEOUT_MS = 4000; // 4 seconds timeout
-    private static final int MAX_DEATH_ANIMATION_ATTEMPTS = 5; // Max attempts to wait for death animation
+    private static final int BASE_MAX_DEATH_ANIMATION_ATTEMPTS = 5; // Base attempts for normal death animations
+    private static final int EXTENDED_MAX_DEATH_ANIMATION_ATTEMPTS = 15; // Extended attempts for unknown or lengthy animations
+    private static final int MAX_DEATH_ANIMATION_DURATION_MS = 10000; // Maximum time to wait for death animation (10 seconds)
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     @Provides
@@ -131,6 +137,15 @@ public class MonsterMonitorPlugin extends Plugin
         for (NPC npc : client.getNpcs())
         {
             int npcIndex = npc.getIndex();
+            String npcName = npc.getName();
+
+            // Check if this NPC requires special handling
+            boolean isSpecialHandledNpc = DeathAnimationIDs.isSpecialHandledNpc(npcName);
+
+            // Skip if the NPC is already fully logged
+            if (npcFullyLoggedMap.getOrDefault(npcIndex, false)) {
+                continue;
+            }
 
             // Handle interaction timeout
             if (npcInteractingMap.getOrDefault(npcIndex, false))
@@ -148,15 +163,40 @@ public class MonsterMonitorPlugin extends Plugin
                 npcAwaitingDeathAnimation.put(npcIndex, true);
                 npcDeathAnimationAttempts.put(npcIndex, 0);
                 npcLastInteractionTimeMap.put(npcIndex, System.currentTimeMillis());
+                npcDeathStartTimeMap.put(npcIndex, System.currentTimeMillis()); // Track start time of death
+
+                // For special handled NPCs, immediately log the last known animation
+                if (isSpecialHandledNpc)
+                {
+                    logDeathAnimation(npcIndex, npcName, npcLastValidAnimationMap.getOrDefault(npcIndex, -1));
+                    npcAwaitingDeathAnimation.remove(npcIndex); // Mark as no longer awaiting death
+                    npcFullyLoggedMap.put(npcIndex, true); // Mark as fully logged
+                    continue; // Skip further processing for this NPC
+                }
             }
 
             // Increment attempts and handle timeout for death animation
             if (npcAwaitingDeathAnimation.containsKey(npcIndex))
             {
                 int attempts = npcDeathAnimationAttempts.getOrDefault(npcIndex, 0);
-                if (attempts >= MAX_DEATH_ANIMATION_ATTEMPTS)
+                int maxAttempts = BASE_MAX_DEATH_ANIMATION_ATTEMPTS;
+
+                // Check if the last animation is a known long death animation
+                int lastAnimationId = npcLastValidAnimationMap.getOrDefault(npcIndex, -1);
+
+                // Extend the monitoring period if an unknown or lengthy animation is detected
+                if (lastAnimationId == -1 || !DeathAnimationIDs.isDeathAnimation(lastAnimationId))
                 {
-                    logDeathAnimation(npcIndex, npc.getName(), npcLastValidAnimationMap.getOrDefault(npcIndex, -1)); // Log last known or unknown
+                    maxAttempts = EXTENDED_MAX_DEATH_ANIMATION_ATTEMPTS;
+                }
+
+                // Check the elapsed time since the death animation started
+                long elapsedTime = System.currentTimeMillis() - npcDeathStartTimeMap.getOrDefault(npcIndex, System.currentTimeMillis());
+                if (elapsedTime > MAX_DEATH_ANIMATION_DURATION_MS || attempts >= maxAttempts)
+                {
+                    logDeathAnimation(npcIndex, npcName, lastAnimationId); // Log last known or unknown
+                    npcAwaitingDeathAnimation.remove(npcIndex); // Mark as no longer awaiting death
+                    npcFullyLoggedMap.put(npcIndex, true); // Mark as fully logged
                 }
                 else
                 {
@@ -175,6 +215,11 @@ public class MonsterMonitorPlugin extends Plugin
             int npcIndex = npc.getIndex();
             int animationId = npc.getAnimation();
 
+            // Skip if the NPC is already fully logged
+            if (npcFullyLoggedMap.getOrDefault(npcIndex, false)) {
+                return;
+            }
+
             // Track the last valid animation for each NPC
             if (animationId != -1)
             {
@@ -187,10 +232,13 @@ public class MonsterMonitorPlugin extends Plugin
                 if (DeathAnimationIDs.isDeathAnimation(animationId))
                 {
                     logDeathAnimation(npcIndex, npc.getName(), animationId);
+                    npcAwaitingDeathAnimation.remove(npcIndex); // Mark as no longer awaiting death
+                    npcFullyLoggedMap.put(npcIndex, true); // Mark as fully logged
                 }
                 else
                 {
                     logDeathAnimation(npcIndex, npc.getName(), animationId);
+                    npcFullyLoggedMap.put(npcIndex, true); // Mark as fully logged
                 }
             }
             else if (isPlayerKillingNpc(npc))
@@ -206,6 +254,12 @@ public class MonsterMonitorPlugin extends Plugin
     {
         NPC npc = event.getNpc();
         int npcIndex = npc.getIndex();
+
+        // Skip if the NPC is already fully logged
+        if (npcFullyLoggedMap.getOrDefault(npcIndex, false)) {
+            cleanupNpcTracking(npcIndex);
+            return;
+        }
 
         // Log if the NPC was expected to perform a death animation but despawned instead
         if (npcAwaitingDeathAnimation.containsKey(npcIndex))
@@ -226,6 +280,8 @@ public class MonsterMonitorPlugin extends Plugin
                 // Otherwise, log the known animation
                 logDeathAnimation(npcIndex, npc.getName(), lastAnimationId);
             }
+
+            npcFullyLoggedMap.put(npcIndex, true); // Mark as fully logged
         }
 
         // Cleanup NPC tracking data after it despawns
@@ -257,6 +313,7 @@ public class MonsterMonitorPlugin extends Plugin
         }
 
         npcLoggedMap.put(npcIndex, true); // Mark the NPC as logged
+        npcFullyLoggedMap.put(npcIndex, true); // Mark as fully logged to prevent double logging
         cleanupNpcTracking(npcIndex);
 
         checkKillLimit(npcName);
@@ -316,6 +373,8 @@ public class MonsterMonitorPlugin extends Plugin
         npcAwaitingDeathAnimation.remove(npcIndex);
         npcDeathAnimationAttempts.remove(npcIndex);
         npcLoggedMap.remove(npcIndex);
+        npcDeathStartTimeMap.remove(npcIndex);
+        npcFullyLoggedMap.remove(npcIndex); // Clear fully logged status on cleanup
     }
 
     public List<NpcData> getTrackedNpcs()
