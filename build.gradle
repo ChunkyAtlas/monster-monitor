@@ -16,18 +16,24 @@ repositories {
 def runeLiteVersion = 'latest.release'
 
 dependencies {
-	compileOnly group: 'net.runelite', name:'client', version: runeLiteVersion
+	// RuneLite client dependency
+	compileOnly group: 'net.runelite', name: 'client', version: runeLiteVersion
 
+	// Lombok for annotations like @Getter, @Setter, @NoArgsConstructor, etc.
 	compileOnly 'org.projectlombok:lombok:1.18.30'
 	annotationProcessor 'org.projectlombok:lombok:1.18.30'
 
+	// Gson for JSON handling in logging and configuration
+	implementation 'com.google.code.gson:gson:2.8.6'
+
+	// Testing dependencies
 	testImplementation 'junit:junit:4.12'
-	testImplementation group: 'net.runelite', name:'client', version: runeLiteVersion
-	testImplementation group: 'net.runelite', name:'jshell', version: runeLiteVersion
+	testImplementation group: 'net.runelite', name: 'client', version: runeLiteVersion
+	testImplementation group: 'net.runelite', name: 'jshell', version: runeLiteVersion
 }
 
-group = 'com.example'
-version = '1.0-SNAPSHOT'
+group = 'com.monstermonitor'
+version = '1.0.0'
 
 tasks.withType(JavaCompile) {
 	options.encoding = 'UTF-8'
