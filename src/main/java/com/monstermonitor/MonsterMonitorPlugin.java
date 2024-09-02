@@ -4,7 +4,6 @@ import com.google.inject.Provides;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.NPC;
-import net.runelite.api.Player;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.NpcDespawned;
@@ -21,13 +20,14 @@ import net.runelite.client.util.ImageUtil;
 import javax.inject.Inject;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
 
+/**
+ * The main plugin class for the Monster Monitor plugin.
+ * This plugin tracks NPC kills, allows setting kill limits, and provides an overlay and panel for monitoring.
+ * It also manages event subscriptions and handles the lifecycle of the plugin.
+ */
 @PluginDescriptor(
         name = "Monster Monitor",
         description = "Tracks NPC kills and allows setting kill limits",
@@ -59,34 +59,30 @@ public class MonsterMonitorPlugin extends Plugin
     @Inject
     private ClientThread clientThread;
 
+    @Inject
+    private NpcAnimationTracker npcAnimationTracker;
+
     private NavigationButton navButton;
     private boolean initialized = false;
-    private String lastKilledNpcName; // Track the last killed NPC's name
 
-    // Map to track recent interactions with NPCs
-    private final Map<Integer, Boolean> npcInteractingMap = new HashMap<>();
-    private final Map<Integer, Integer> npcLastValidAnimationMap = new HashMap<>();
-    private final Map<Integer, Long> npcLastInteractionTimeMap = new HashMap<>(); // Track the last interaction time
-    private final Map<Integer, Boolean> npcAwaitingDeathAnimation = new HashMap<>(); // Tracks NPCs awaiting death animation
-    private final Map<Integer, Integer> npcDeathAnimationAttempts = new HashMap<>(); // Tracks attempts to get death animation
-    private final Map<Integer, Boolean> npcLoggedMap = new HashMap<>(); // Track if an NPC's death has already been logged
-    private final Map<Integer, Long> npcDeathStartTimeMap = new HashMap<>(); // Track when death animation started
-
-    // Flag to prevent double logging
-    private final Map<Integer, Boolean> npcFullyLoggedMap = new HashMap<>();
-
-    private static final int INTERACTION_TIMEOUT_MS = 4000; // 4 seconds timeout
-    private static final int BASE_MAX_DEATH_ANIMATION_ATTEMPTS = 5; // Base attempts for normal death animations
-    private static final int EXTENDED_MAX_DEATH_ANIMATION_ATTEMPTS = 15; // Extended attempts for unknown or lengthy animations
-    private static final int MAX_DEATH_ANIMATION_DURATION_MS = 10000; // Maximum time to wait for death animation (10 seconds)
-    private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-
+    /**
+     * Provides the configuration for the Monster Monitor plugin.
+     *
+     * @param configManager the configuration manager
+     * @return the Monster Monitor plugin configuration
+     */
     @Provides
     MonsterMonitorConfig provideConfig(ConfigManager configManager)
     {
         return configManager.getConfig(MonsterMonitorConfig.class);
     }
 
+    /**
+     * Starts up the Monster Monitor plugin.
+     * Initializes the logger and sets up the UI components such as the navigation button.
+     *
+     * @throws Exception if an error occurs during startup
+     */
     @Override
     protected void startUp() throws Exception
     {
@@ -109,21 +105,32 @@ public class MonsterMonitorPlugin extends Plugin
         updateOverlayVisibility(); // Apply the overlay visibility setting
     }
 
+    /**
+     * Shuts down the Monster Monitor plugin.
+     * Cleans up the UI components and saves the log data.
+     *
+     * @throws Exception if an error occurs during shutdown
+     */
     @Override
     protected void shutDown() throws Exception
     {
         overlayManager.remove(overlay);
         clientToolbar.removeNavigation(navButton);
-        logger.saveLog(); // Save log on shutdown
+        if (logger != null && initialized)
+        {
+            logger.saveLog(); // Save log on shutdown
+        }
         initialized = false; // Reset initialization flag
-        scheduler.shutdown();
     }
 
+    /**
+     * Handles the game tick event to initialize the plugin components when the player is present.
+     *
+     * @param event the game tick event
+     */
     @Subscribe
-    public void onGameTick(GameTick event)
-    {
-        if (!initialized && client.getLocalPlayer() != null)
-        {
+    public void onGameTick(GameTick event) {
+        if (!initialized && client.getLocalPlayer() != null) {
             logger.initialize(); // Initialize the logger
             logger.loadLog(); // Load the log data
 
@@ -132,200 +139,97 @@ public class MonsterMonitorPlugin extends Plugin
 
             initialized = true; // Mark as initialized
         }
-
-        // Process each NPC in the game
-        for (NPC npc : client.getNpcs())
-        {
-            int npcIndex = npc.getIndex();
-            String npcName = npc.getName();
-
-            // Check if this NPC requires special handling
-            boolean isSpecialHandledNpc = DeathAnimationIDs.isSpecialHandledNpc(npcName);
-
-            // Skip if the NPC is already fully logged
-            if (npcFullyLoggedMap.getOrDefault(npcIndex, false)) {
-                continue;
-            }
-
-            // Handle interaction timeout
-            if (npcInteractingMap.getOrDefault(npcIndex, false))
-            {
-                long lastInteractionTime = npcLastInteractionTimeMap.getOrDefault(npcIndex, 0L);
-                if (System.currentTimeMillis() - lastInteractionTime > INTERACTION_TIMEOUT_MS)
-                {
-                    npcInteractingMap.put(npcIndex, false);
-                }
-            }
-
-            // Check for NPC death
-            if (isPlayerKillingNpc(npc) && npc.getHealthRatio() == 0 && !npcAwaitingDeathAnimation.containsKey(npcIndex))
-            {
-                npcAwaitingDeathAnimation.put(npcIndex, true);
-                npcDeathAnimationAttempts.put(npcIndex, 0);
-                npcLastInteractionTimeMap.put(npcIndex, System.currentTimeMillis());
-                npcDeathStartTimeMap.put(npcIndex, System.currentTimeMillis()); // Track start time of death
-
-                // For special handled NPCs, immediately log the last known animation
-                if (isSpecialHandledNpc)
-                {
-                    logDeathAnimation(npcIndex, npcName, npcLastValidAnimationMap.getOrDefault(npcIndex, -1));
-                    npcAwaitingDeathAnimation.remove(npcIndex); // Mark as no longer awaiting death
-                    npcFullyLoggedMap.put(npcIndex, true); // Mark as fully logged
-                    continue; // Skip further processing for this NPC
-                }
-            }
-
-            // Increment attempts and handle timeout for death animation
-            if (npcAwaitingDeathAnimation.containsKey(npcIndex))
-            {
-                int attempts = npcDeathAnimationAttempts.getOrDefault(npcIndex, 0);
-                int maxAttempts = BASE_MAX_DEATH_ANIMATION_ATTEMPTS;
-
-                // Check if the last animation is a known long death animation
-                int lastAnimationId = npcLastValidAnimationMap.getOrDefault(npcIndex, -1);
-
-                // Extend the monitoring period if an unknown or lengthy animation is detected
-                if (lastAnimationId == -1 || !DeathAnimationIDs.isDeathAnimation(lastAnimationId))
-                {
-                    maxAttempts = EXTENDED_MAX_DEATH_ANIMATION_ATTEMPTS;
-                }
-
-                // Check the elapsed time since the death animation started
-                long elapsedTime = System.currentTimeMillis() - npcDeathStartTimeMap.getOrDefault(npcIndex, System.currentTimeMillis());
-                if (elapsedTime > MAX_DEATH_ANIMATION_DURATION_MS || attempts >= maxAttempts)
-                {
-                    logDeathAnimation(npcIndex, npcName, lastAnimationId); // Log last known or unknown
-                    npcAwaitingDeathAnimation.remove(npcIndex); // Mark as no longer awaiting death
-                    npcFullyLoggedMap.put(npcIndex, true); // Mark as fully logged
-                }
-                else
-                {
-                    npcDeathAnimationAttempts.put(npcIndex, attempts + 1);
-                }
-            }
-        }
     }
 
+    /**
+     * Handles the animation changed event for NPCs.
+     * Tracks the NPC animations for further processing by the NPC animation tracker.
+     *
+     * @param event the animation changed event
+     */
     @Subscribe
     public void onAnimationChanged(AnimationChanged event)
     {
         if (event.getActor() instanceof NPC)
         {
             NPC npc = (NPC) event.getActor();
-            int npcIndex = npc.getIndex();
-            int animationId = npc.getAnimation();
-
-            // Skip if the NPC is already fully logged
-            if (npcFullyLoggedMap.getOrDefault(npcIndex, false)) {
-                return;
-            }
-
-            // Track the last valid animation for each NPC
-            if (animationId != -1)
-            {
-                npcLastValidAnimationMap.put(npcIndex, animationId);
-            }
-
-            // If the NPC is awaiting a death animation, log it
-            if (npcAwaitingDeathAnimation.containsKey(npcIndex))
-            {
-                if (DeathAnimationIDs.isDeathAnimation(animationId))
-                {
-                    logDeathAnimation(npcIndex, npc.getName(), animationId);
-                    npcAwaitingDeathAnimation.remove(npcIndex); // Mark as no longer awaiting death
-                    npcFullyLoggedMap.put(npcIndex, true); // Mark as fully logged
-                }
-                else
-                {
-                    logDeathAnimation(npcIndex, npc.getName(), animationId);
-                    npcFullyLoggedMap.put(npcIndex, true); // Mark as fully logged
-                }
-            }
-            else if (isPlayerKillingNpc(npc))
-            {
-                npcInteractingMap.put(npcIndex, true);
-                npcLastInteractionTimeMap.put(npcIndex, System.currentTimeMillis());
-            }
+            npcAnimationTracker.trackNpc(npc);  // Track the NPC animation
         }
     }
 
+    /**
+     * Handles the NPC despawned event.
+     * Tracks the NPC state when it despawns using the NPC animation tracker.
+     *
+     * @param event the NPC despawned event
+     */
     @Subscribe
     public void onNpcDespawned(NpcDespawned event)
     {
         NPC npc = event.getNpc();
-        int npcIndex = npc.getIndex();
+        npcAnimationTracker.trackNpc(npc);  // Handle despawn by tracking the NPC state
+    }
 
-        // Skip if the NPC is already fully logged
-        if (npcFullyLoggedMap.getOrDefault(npcIndex, false)) {
-            cleanupNpcTracking(npcIndex);
+    /**
+     * Logs the death animation of an NPC.
+     * Updates the UI and checks if the kill limit has been reached.
+     *
+     * @param npcName the name of the NPC
+     * @param animationId the ID of the death animation
+     */
+    public void logDeathAnimation(String npcName, int animationId) {
+        if (initialized)
+        {
+            logger.logDeath(npcName, animationId);
+            updateUI();
+            checkKillLimit(npcName);
+        }
+    }
+
+    /**
+     * Logs an unknown death animation for an NPC.
+     * Updates the UI and checks if the kill limit has been reached.
+     *
+     * @param npcName the name of the NPC
+     * @param animationId the ID of the unknown animation
+     */
+    public void logUnknownDeathAnimation(String npcName, int animationId) {
+        if (initialized)
+        {
+            logger.logUnknownAnimations(npcName, animationId);
+            updateUI();
+            checkKillLimit(npcName);
+        }
+    }
+
+    /**
+     * Updates the plugin's UI components.
+     * Ensures the updates are run on the main client thread.
+     */
+    private void updateUI()
+    {
+        if (initialized)
+        {
+            // Run the UI update on the main client thread to ensure it happens immediately
+            clientThread.invoke(() -> {
+                updateOverlay();
+                panel.updatePanel();
+            });
+        }
+    }
+
+    /**
+     * Checks if the kill limit for an NPC has been reached and notifies the player if necessary.
+     *
+     * @param npcName the name of the NPC
+     */
+    private void checkKillLimit(String npcName)
+    {
+        if (!initialized)
+        {
             return;
         }
 
-        // Log if the NPC was expected to perform a death animation but despawned instead
-        if (npcAwaitingDeathAnimation.containsKey(npcIndex))
-        {
-            int lastAnimationId = npcLastValidAnimationMap.getOrDefault(npcIndex, -1);
-            if (lastAnimationId == -1)
-            {
-                // If no valid animation was captured, log as unknown
-                logger.logUnknownAnimations(npc.getName(), -1);
-            }
-            else if (!DeathAnimationIDs.isDeathAnimation(lastAnimationId))
-            {
-                // If a non-death animation was captured, log it as unknown
-                logger.logUnknownAnimations(npc.getName(), lastAnimationId);
-            }
-            else
-            {
-                // Otherwise, log the known animation
-                logDeathAnimation(npcIndex, npc.getName(), lastAnimationId);
-            }
-
-            npcFullyLoggedMap.put(npcIndex, true); // Mark as fully logged
-        }
-
-        // Cleanup NPC tracking data after it despawns
-        cleanupNpcTracking(npcIndex);
-    }
-
-    private void logDeathAnimation(int npcIndex, String npcName, int animationId)
-    {
-        if (npcLoggedMap.getOrDefault(npcIndex, false))
-        {
-            return; // If already logged, skip logging again
-        }
-
-        if (animationId != -1)
-        {
-            if (DeathAnimationIDs.isDeathAnimation(animationId))
-            {
-                lastKilledNpcName = npcName;
-                logger.logDeath(npcName, animationId); // Log known death animation
-            }
-            else
-            {
-                logger.logUnknownAnimations(npcName, animationId); // Log unknown animation
-            }
-        }
-        else
-        {
-            logger.logUnknownAnimations(npcName, -1); // Log as unknown if no valid animation found
-        }
-
-        npcLoggedMap.put(npcIndex, true); // Mark the NPC as logged
-        npcFullyLoggedMap.put(npcIndex, true); // Mark as fully logged to prevent double logging
-        cleanupNpcTracking(npcIndex);
-
-        checkKillLimit(npcName);
-
-        clientThread.invoke(() -> {
-            updateOverlay();
-            panel.updatePanel();
-        });
-    }
-
-    private void checkKillLimit(String npcName)
-    {
         NpcData npcData = logger.getNpcLog().get(npcName);
         if (npcData == null)
         {
@@ -337,66 +241,45 @@ public class MonsterMonitorPlugin extends Plugin
 
         if (killLimit > 0 && killCountForLimit >= killLimit && npcData.isNotifyOnLimit())
         {
-            // Notify the player
+            // Notify the player when kill limit is reached
             Toolkit.getDefaultToolkit().beep();
             client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Kill limit reached for " + npcName, null);
         }
     }
 
-    private boolean isPlayerKillingNpc(NPC npc)
-    {
-        if (npc == null || client.getLocalPlayer() == null)
-        {
-            return false;
-        }
-
-        Player localPlayer = client.getLocalPlayer();
-
-        // Direct interaction checks
-        if (npc.getInteracting() == localPlayer || localPlayer.getInteracting() == npc)
-        {
-            return true;
-        }
-
-        // Recent interaction check
-        boolean wasInteracting = npcInteractingMap.getOrDefault(npc.getIndex(), false);
-        long lastInteractionTime = npcLastInteractionTimeMap.getOrDefault(npc.getIndex(), 0L);
-
-        return wasInteracting && (System.currentTimeMillis() - lastInteractionTime <= INTERACTION_TIMEOUT_MS);
-    }
-
-    private void cleanupNpcTracking(int npcIndex)
-    {
-        npcLastValidAnimationMap.remove(npcIndex);
-        npcInteractingMap.remove(npcIndex);
-        npcLastInteractionTimeMap.remove(npcIndex);
-        npcAwaitingDeathAnimation.remove(npcIndex);
-        npcDeathAnimationAttempts.remove(npcIndex);
-        npcLoggedMap.remove(npcIndex);
-        npcDeathStartTimeMap.remove(npcIndex);
-        npcFullyLoggedMap.remove(npcIndex); // Clear fully logged status on cleanup
-    }
-
+    /**
+     * Retrieves the list of NPCs currently being tracked by the plugin.
+     *
+     * @return a list of NpcData objects representing tracked NPCs
+     */
     public List<NpcData> getTrackedNpcs()
     {
         return logger.getNpcLog().values().stream().collect(Collectors.toList());
     }
 
-    public String getLastKilledNpcName()
-    {
-        return lastKilledNpcName;
-    }
-
+    /**
+     * Retrieves the logger instance used by the plugin.
+     *
+     * @return the MonsterMonitorLogger instance
+     */
     public MonsterMonitorLogger getLogger()
     {
         return logger;
     }
 
+    /**
+     * Updates the data displayed on the overlay.
+     * This method is called whenever tracked NPC data changes.
+     */
     public void updateOverlay()
     {
         overlay.updateOverlayData(getTrackedNpcs());
     }
 
+    /**
+     * Updates the visibility of the overlay based on the plugin configuration.
+     * Adds or removes the overlay from the overlay manager accordingly.
+     */
     private void updateOverlayVisibility()
     {
         if (config.showOverlay())

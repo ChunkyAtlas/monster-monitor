@@ -10,18 +10,31 @@ import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * The MonsterMonitorPanel class represents the UI panel for the Monster Monitor plugin.
+ * This panel displays a list of tracked NPCs, allows users to set kill limits and notifications,
+ * and provides options to reset NPC data. It also updates dynamically based on the plugin's data.
+ */
 public class MonsterMonitorPanel extends PluginPanel
 {
     private final MonsterMonitorPlugin plugin;
+    private final MonsterMonitorLogger logger;
     private final JPanel npcListPanel;
     private final JScrollPane scrollPane;
-
     private JLabel totalKillCountLabel;
 
+    /**
+     * Constructor for the MonsterMonitorPanel.
+     * Initializes the panel layout and components, including the title, kill count label, and NPC list.
+     *
+     * @param plugin the main plugin instance
+     * @param logger the logger instance used for tracking NPC data
+     */
     @Inject
-    public MonsterMonitorPanel(MonsterMonitorPlugin plugin)
+    public MonsterMonitorPanel(MonsterMonitorPlugin plugin, MonsterMonitorLogger logger)
     {
         this.plugin = plugin;
+        this.logger = logger;
 
         // Setup the panel title with an icon
         JLabel titleLabel = new JLabel("Monster Monitor");
@@ -38,27 +51,32 @@ public class MonsterMonitorPanel extends PluginPanel
         totalKillCountLabel.setForeground(Color.LIGHT_GRAY);
         totalKillCountLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
+        // Panel to hold the list of tracked NPCs
         this.npcListPanel = new JPanel();
         this.npcListPanel.setLayout(new BoxLayout(npcListPanel, BoxLayout.Y_AXIS));
         this.npcListPanel.setBackground(Color.DARK_GRAY);
         this.scrollPane = new JScrollPane(npcListPanel);
         this.scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
 
+        // Set layout and add components to the panel
         setLayout(new BorderLayout());
         add(titleLabel, BorderLayout.NORTH);
         add(totalKillCountLabel, BorderLayout.CENTER);
         add(scrollPane, BorderLayout.SOUTH);
     }
 
-    // Update the panel with the list of tracked NPCs
+    /**
+     * Updates the panel with the current list of tracked NPCs.
+     * Sorts the NPCs, adds them to the display panel, and updates the total kill count.
+     */
     public void updatePanel()
     {
-        npcListPanel.removeAll();
+        npcListPanel.removeAll(); // Clear the existing NPC list
 
         List<NpcData> trackedNpcs = new ArrayList<>(plugin.getTrackedNpcs());
-        String lastKilledNpcName = plugin.getLastKilledNpcName(); // Get the last killed NPC's name
+        String lastKilledNpcName = logger.getLastKilledNpcName(); // Get the last killed NPC's name
 
-        // Sort NPCs, but keep last killed NPC and unknown animation NPCs on top
+        // Separate NPCs into top (last killed or unknown) and others
         List<NpcData> topNpcs = new ArrayList<>();
         List<NpcData> otherNpcs = new ArrayList<>();
 
@@ -68,6 +86,7 @@ public class MonsterMonitorPanel extends PluginPanel
         {
             totalKills += npcData.getTotalKillCount(); // Accumulate total kills
 
+            // Sort NPCs, prioritizing last killed or unknown animation NPCs
             if (npcData.getNpcName().equals(lastKilledNpcName) || !DeathAnimationIDs.isDeathAnimation(npcData.getDeathAnimationId()))
             {
                 topNpcs.add(npcData);
@@ -97,7 +116,12 @@ public class MonsterMonitorPanel extends PluginPanel
         repaint();
     }
 
-    // Helper method to add an individual NPC panel
+    /**
+     * Helper method to add an individual NPC panel to the display.
+     * Each NPC panel includes the NPC name, kill count, and options to set limits or notifications.
+     *
+     * @param npcData the data for the NPC to be displayed
+     */
     private void addNpcPanel(NpcData npcData)
     {
         JPanel npcPanel = new JPanel(new BorderLayout());

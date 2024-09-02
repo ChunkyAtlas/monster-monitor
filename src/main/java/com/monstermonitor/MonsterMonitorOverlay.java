@@ -1,5 +1,6 @@
 package com.monstermonitor;
 
+import lombok.Getter;
 import net.runelite.api.Client;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.ui.overlay.Overlay;
@@ -10,16 +11,22 @@ import net.runelite.client.ui.overlay.components.LineComponent;
 import net.runelite.client.ui.overlay.components.PanelComponent;
 import net.runelite.client.ui.overlay.components.TitleComponent;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.util.List;
 
+/**
+ * The MonsterMonitorOverlay class represents the overlay that displays tracked NPC kill limits in-game.
+ * This overlay is positioned on the screen and shows the progress towards kill limits for NPCs being tracked.
+ */
 public class MonsterMonitorOverlay extends Overlay
 {
     private List<NpcData> trackedNpcs; // List of NPCs being tracked for the overlay
 
+    @Getter
     private final Client client;
     private final MonsterMonitorPlugin plugin;
     private final PanelComponent panelComponent = new PanelComponent();
@@ -27,6 +34,13 @@ public class MonsterMonitorOverlay extends Overlay
     @Inject
     private ClientThread clientThread;
 
+    /**
+     * Constructor for the MonsterMonitorOverlay.
+     * Initializes the overlay's position, layer, and priority.
+     *
+     * @param client the client instance
+     * @param plugin the main plugin instance
+     */
     @Inject
     public MonsterMonitorOverlay(Client client, MonsterMonitorPlugin plugin)
     {
@@ -37,12 +51,24 @@ public class MonsterMonitorOverlay extends Overlay
         setPriority(OverlayPriority.HIGH); // Give the overlay high priority
     }
 
-    // Update the overlay data with the list of tracked NPCs
+    /**
+     * Updates the overlay data with the list of tracked NPCs.
+     * This method is called when the tracked NPCs change and the overlay needs to reflect the new data.
+     *
+     * @param trackedNpcs the list of NPCs being tracked
+     */
     public void updateOverlayData(List<NpcData> trackedNpcs)
     {
         this.trackedNpcs = trackedNpcs;
     }
 
+    /**
+     * Renders the overlay on the screen.
+     * This method is called every frame and handles drawing the NPC kill limits and progress on the overlay.
+     *
+     * @param graphics the graphics object used for rendering
+     * @return the dimension of the rendered overlay
+     */
     @Override
     public Dimension render(Graphics2D graphics)
     {
@@ -78,4 +104,16 @@ public class MonsterMonitorOverlay extends Overlay
 
         return panelComponent.render(graphics); // Render the overlay
     }
+
+    /**
+     * Retrieves the MonsterMonitorPlugin instance associated with this overlay.
+     *
+     * @return the MonsterMonitorPlugin instance
+     */
+    @Nullable
+    @Override
+    public MonsterMonitorPlugin getPlugin() {
+        return plugin;
+    }
+
 }

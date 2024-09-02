@@ -3,8 +3,13 @@ package com.monstermonitor;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * The DeathAnimationIDs class stores the animation IDs associated with NPC death animations.
+ * It provides a method to check if a given animation ID corresponds to a known death animation.
+ */
 public class DeathAnimationIDs
 {
+    // Constants representing the animation IDs for various NPC deaths
     public static final int CAVE_KRAKEN_DEATH = 3993;
     public static final int WIZARD_DEATH = 2553;
     public static final int GARGOYLE_DEATH = 1520;
@@ -14,13 +19,13 @@ public class DeathAnimationIDs
     public static final int ZYGOMITE_DEATH = 3327;
     public static final int IMP_DEATH = 172;
     public static final int CORP_DEATH = 1676;
-    public static final int DEATH = 836; //Any "MAN/WOMAN character (includes guards/black knights etc)
+    public static final int DEATH = 836; // Any "MAN/WOMAN" character (includes guards/black knights, etc.)
     public static final int DWARF_DEATH = 102;
     public static final int ICEFIEND_DEATH = 1580;
 
     // Newly discovered death animations
     public static final int RAM_DEATH = 5336;
-    public static final int COW_DEATH = 5851; //Includes Calf
+    public static final int COW_DEATH = 5851; // Includes Calf
     public static final int CHICKEN_DEATH = 5389;
     public static final int SKELETON_DEATH = 5491;
     public static final int SCORPION_DEATH = 6256;
@@ -34,9 +39,10 @@ public class DeathAnimationIDs
     public static final int FROG_DEATH = 1795;
     public static final int SPIDER_DEATH = 6251;
 
-
+    // Set containing all the death animation IDs
     public static final Set<Integer> DEATH_ANIMATIONS = new HashSet<>();
 
+    // Static block to initialize the DEATH_ANIMATIONS set with the animation IDs
     static {
         DEATH_ANIMATIONS.add(SPIDER_DEATH);
         DEATH_ANIMATIONS.add(GIANT_RAT_DEATH);
@@ -66,23 +72,14 @@ public class DeathAnimationIDs
         DEATH_ANIMATIONS.add(GOBLIN_DEATH);
     }
 
-    // Set to store NPC names requiring special handling
-    private static final Set<String> specialHandledNpcs = new HashSet<>();
-
-    static {
-        // Initialize the set with known NPCs that need special handling
-        specialHandledNpcs.add("Imp");
-        // Add other special NPC names as needed... (Which we will probably)
-    }
-
+    /**
+     * Checks if the given animation ID corresponds to a known death animation.
+     *
+     * @param animationId the animation ID to check
+     * @return true if the animation ID is a known death animation, false otherwise
+     */
     public static boolean isDeathAnimation(int animationId)
     {
         return DEATH_ANIMATIONS.contains(animationId) && animationId != -1;
-    }
-
-    // Method to check if an NPC requires special handling
-    public static boolean isSpecialHandledNpc(String npcName)
-    {
-        return specialHandledNpcs.contains(npcName);
     }
 }
