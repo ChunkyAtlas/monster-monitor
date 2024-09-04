@@ -16,12 +16,16 @@ import javax.inject.Inject;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.util.Collections;
 import java.util.List;
 
 /**
- * The MonsterMonitorOverlay class represents the overlay that displays tracked NPC kill limits in-game.
- * This overlay is positioned on the screen and shows the progress towards kill limits for NPCs being tracked.
+ * Represents the overlay used in the Monster Monitor.
+ * This overlay displays information about tracked NPCs, such as their names and the number of kills
+ * towards a specified kill limit. The overlay is positioned in the top left of the game screen,
+ * with a semi-transparent dark background.
  */
+
 public class MonsterMonitorOverlay extends Overlay
 {
     private List<NpcData> trackedNpcs; // List of NPCs being tracked for the overlay
@@ -35,55 +39,56 @@ public class MonsterMonitorOverlay extends Overlay
     private ClientThread clientThread;
 
     /**
-     * Constructor for the MonsterMonitorOverlay.
-     * Initializes the overlay's position, layer, and priority.
+     * Constructs the MonsterMonitorOverlay and initializes the overlay's properties.
      *
-     * @param client the client instance
-     * @param plugin the main plugin instance
+     * @param client The RuneLite client instance.
+     * @param plugin The MonsterMonitorPlugin instance that this overlay is part of.
      */
     @Inject
     public MonsterMonitorOverlay(Client client, MonsterMonitorPlugin plugin)
     {
         this.client = client;
         this.plugin = plugin;
-        setPosition(OverlayPosition.TOP_LEFT); // Position the overlay at the top left
-        setLayer(OverlayLayer.ABOVE_WIDGETS); // Layer it above widgets
-        setPriority(OverlayPriority.HIGH); // Give the overlay high priority
+        setPosition(OverlayPosition.TOP_LEFT); // Position the overlay at the top left of the screen
+        setLayer(OverlayLayer.ABOVE_WIDGETS); // Layer the overlay above widgets
+        setPriority(OverlayPriority.HIGH); // Give the overlay high priority to ensure it is visible
+
+        // Configure the panelComponent for the overlay
+        panelComponent.setBackgroundColor(new Color(45, 45, 45, 200)); // Dark gray with semi-transparency
+        panelComponent.setPreferredSize(new Dimension(150, 0)); // Set a preferred width for the overlay
     }
 
     /**
-     * Updates the overlay data with the list of tracked NPCs.
-     * This method is called when the tracked NPCs change and the overlay needs to reflect the new data.
+     * Updates the list of tracked NPCs to be displayed on the overlay.
      *
-     * @param trackedNpcs the list of NPCs being tracked
+     * @param trackedNpcs The list of NPCs to be tracked and displayed.
      */
     public void updateOverlayData(List<NpcData> trackedNpcs)
     {
+        Collections.reverse(trackedNpcs); // Reverse the order to display the most recent NPCs first
         this.trackedNpcs = trackedNpcs;
     }
 
     /**
-     * Renders the overlay on the screen.
-     * This method is called every frame and handles drawing the NPC kill limits and progress on the overlay.
+     * Renders the overlay on the game screen, displaying tracked NPCs and their kill counts.
      *
-     * @param graphics the graphics object used for rendering
-     * @return the dimension of the rendered overlay
+     * @param graphics The Graphics2D object used for drawing the overlay.
+     * @return The dimension of the rendered overlay.
      */
     @Override
     public Dimension render(Graphics2D graphics)
     {
         panelComponent.getChildren().clear(); // Clear previous overlay components
 
-        // If no NPCs are being tracked, don't display the overlay
         if (trackedNpcs == null || trackedNpcs.isEmpty())
         {
             return null; // Return early if there are no tracked NPCs to display
         }
 
-        // Add a title to the overlay
+        // Add a title to the overlay with an orange color
         panelComponent.getChildren().add(TitleComponent.builder()
                 .text("Monster Monitor")
-                .color(Color.ORANGE)
+                .color(new Color(200, 150, 0)) // Orange color for the title
                 .build());
 
         // Display only NPCs with a set kill limit
@@ -92,28 +97,29 @@ public class MonsterMonitorOverlay extends Overlay
             int limit = npcData.getKillLimit();
             int killsTowardLimit = npcData.getKillCountForLimit();
 
-            // Only display NPCs that have a kill limit set
             if (limit > 0)
             {
+                // Add each NPC with a name and kill count, showing progress towards the kill limit
                 panelComponent.getChildren().add(LineComponent.builder()
                         .left(npcData.getNpcName())
                         .right(killsTowardLimit + "/" + limit) // Show the progress towards the kill limit
+                        .leftColor(new Color(200, 200, 200)) // Light gray text for NPC name
+                        .rightColor(new Color(200, 200, 200)) // Light gray text for kill count
                         .build());
             }
         }
 
-        return panelComponent.render(graphics); // Render the overlay
+        return panelComponent.render(graphics); // Render the overlay and return its dimension
     }
 
     /**
-     * Retrieves the MonsterMonitorPlugin instance associated with this overlay.
+     * Gets the plugin instance associated with this overlay.
      *
-     * @return the MonsterMonitorPlugin instance
+     * @return The MonsterMonitorPlugin instance.
      */
     @Nullable
     @Override
     public MonsterMonitorPlugin getPlugin() {
         return plugin;
     }
-
 }

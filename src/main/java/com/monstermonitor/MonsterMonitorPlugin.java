@@ -10,6 +10,7 @@ import net.runelite.api.events.NpcDespawned;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
@@ -24,7 +25,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * The main plugin class for the Monster Monitor plugin.
+ * The main plugin class for Monster Monitor.
  * This plugin tracks NPC kills, allows setting kill limits, and provides an overlay and panel for monitoring.
  * It also manages event subscriptions and handles the lifecycle of the plugin.
  */
@@ -206,7 +207,7 @@ public class MonsterMonitorPlugin extends Plugin
      * Updates the plugin's UI components.
      * Ensures the updates are run on the main client thread.
      */
-    private void updateUI()
+    public void updateUI()
     {
         if (initialized)
         {
@@ -242,8 +243,15 @@ public class MonsterMonitorPlugin extends Plugin
         if (killLimit > 0 && killCountForLimit >= killLimit && npcData.isNotifyOnLimit())
         {
             // Notify the player when kill limit is reached
-            Toolkit.getDefaultToolkit().beep();
-            client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Kill limit reached for " + npcName, null);
+            if (config.enableSoundAlerts())
+            {
+                Toolkit.getDefaultToolkit().beep(); // Sound alert
+            }
+            if (config.showChatNotifications())
+            {
+                String message = config.customNotificationMessage().replace("{npc}", npcName);
+                client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", message, null);
+            }
         }
     }
 
@@ -293,5 +301,34 @@ public class MonsterMonitorPlugin extends Plugin
 
         // Force update overlay data
         updateOverlay();
+    }
+
+    /**
+     * Handles configuration changes and updates the plugin settings immediately.
+     *
+     * @param event the config changed event
+     */
+    @Subscribe
+    public void onConfigChanged(ConfigChanged event) {
+        if (!event.getGroup().equals("monster monitor")) {
+            return;
+        }
+
+        switch (event.getKey()) {
+            case "defaultKillLimit":
+                // Update any new NPC tracking to use this limit
+                break;
+            case "showOverlay":
+                updateOverlayVisibility();
+                break;
+            case "notifyOnLimit":
+            case "showChatNotifications":
+            case "customNotificationMessage":
+            case "notifyOnUnknownDeathAnimation":
+            case "enableSoundAlerts":
+                // Apply changes immediately
+                updateUI();
+                break;
+        }
     }
 }

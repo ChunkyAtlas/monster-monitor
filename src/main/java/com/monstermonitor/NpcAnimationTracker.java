@@ -21,7 +21,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Tracks and manages NPC animations and interactions for the Monster Monitor plugin.
+ * Tracks and manages NPC animations and interactions for the Monster Monitor.
  * This class handles tracking NPC interactions, buffering animations, and detecting death animations
  * to log significant events related to NPCs during gameplay.
  */
