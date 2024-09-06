@@ -19,7 +19,7 @@ public class DeathAnimationIDs
     public static final int ZYGOMITE_DEATH = 3327;
     public static final int IMP_DEATH = 172;
     public static final int CORP_DEATH = 1676;
-    public static final int DEATH = 836; // Any "MAN/WOMAN" character (includes guards/black knights, etc.)
+   public static final int DEATH = 836; // Any "MAN/WOMAN" character (includes guards/black knights, etc.)
     public static final int DWARF_DEATH = 102;
     public static final int ICEFIEND_DEATH = 1580;
 

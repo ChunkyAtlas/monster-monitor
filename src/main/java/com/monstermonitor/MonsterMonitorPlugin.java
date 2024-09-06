@@ -19,6 +19,7 @@ import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ImageUtil;
 
 import javax.inject.Inject;
+import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.List;
@@ -104,6 +105,20 @@ public class MonsterMonitorPlugin extends Plugin
         clientToolbar.addNavigation(navButton);
 
         updateOverlayVisibility(); // Apply the overlay visibility setting
+
+        // Apply the custom scrollbar on the client thread to ensure proper initialization
+        clientThread.invokeLater(() -> {
+            Component parent = panel.getParent(); // Get parent of the panel
+            while (parent != null && !(parent instanceof JScrollPane)) {
+                parent = parent.getParent(); // Traverse upwards to find the JScrollPane
+            }
+
+            if (parent instanceof JScrollPane) {
+                JScrollPane scrollPane = (JScrollPane) parent;
+                scrollPane.getVerticalScrollBar().setUI(new MonsterMonitorPanel.CustomScrollBarUI(new Color(200, 150, 0)));
+                scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(2, 0)); // Set scrollbar width
+            }
+        });
     }
 
     /**
@@ -189,7 +204,8 @@ public class MonsterMonitorPlugin extends Plugin
 
     /**
      * Logs an unknown death animation for an NPC.
-     * Updates the UI and checks if the kill limit has been reached.
+     * Updates the UI and checks if the kill limit has been reached. Notifies player on First Unknown Death Animation
+     * Instance.
      *
      * @param npcName the name of the NPC
      * @param animationId the ID of the unknown animation
@@ -197,11 +213,31 @@ public class MonsterMonitorPlugin extends Plugin
     public void logUnknownDeathAnimation(String npcName, int animationId) {
         if (initialized)
         {
+            // Check if this NPC and animation have already been notified as unknown
+            int lastLoggedAnimation = logger.getLastUnknownAnimations(npcName);
+
+            // Log the unknown animation every time
             logger.logUnknownAnimations(npcName, animationId);
+
+            // Only notify the player if it's the first time seeing this unknown animation for the NPC
+            if (lastLoggedAnimation != animationId && config.notifyOnUnknownDeathAnimation())
+            {
+                if (config.enableSoundAlerts())
+                {
+                    Toolkit.getDefaultToolkit().beep(); // Sound alert
+                }
+                if (config.showChatNotifications())
+                {
+                    String message = "<col=ff0000>Unknown death animation logged for {npc}</col>".replace("{npc}", npcName);
+                    client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", message, null);
+                }
+            }
+
             updateUI();
             checkKillLimit(npcName);
         }
     }
+
 
     /**
      * Updates the plugin's UI components.
@@ -242,15 +278,19 @@ public class MonsterMonitorPlugin extends Plugin
 
         if (killLimit > 0 && killCountForLimit >= killLimit && npcData.isNotifyOnLimit())
         {
-            // Notify the player when kill limit is reached
-            if (config.enableSoundAlerts())
+            if (config.notifyOnLimit())
             {
-                Toolkit.getDefaultToolkit().beep(); // Sound alert
-            }
-            if (config.showChatNotifications())
-            {
-                String message = config.customNotificationMessage().replace("{npc}", npcName);
-                client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", message, null);
+                // Notify the player when kill limit is reached
+                if (config.enableSoundAlerts())
+                {
+                    Toolkit.getDefaultToolkit().beep(); // Sound alert
+                }
+                if (config.showChatNotifications())
+                {
+                    String message = "<col=ff0000>" + config.customNotificationMessage().replace("{npc}", npcName) + "</col>";
+                    client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", message, null);
+
+                }
             }
         }
     }
@@ -315,9 +355,6 @@ public class MonsterMonitorPlugin extends Plugin
         }
 
         switch (event.getKey()) {
-            case "defaultKillLimit":
-                // Update any new NPC tracking to use this limit
-                break;
             case "showOverlay":
                 updateOverlayVisibility();
                 break;

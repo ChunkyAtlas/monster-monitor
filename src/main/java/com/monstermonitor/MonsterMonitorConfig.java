@@ -41,20 +41,6 @@ public interface MonsterMonitorConfig extends Config {
     }
 
     /**
-     * Configures the default kill limit for NPCs.
-     *
-     * @return the default kill limit
-     */
-    @ConfigItem(
-            keyName = "defaultKillLimit",
-            name = "Default Kill Limit",
-            description = "Set the default kill limit for NPCs."
-    )
-    default int defaultKillLimit() {
-        return 100; // Default to 100 kills
-    }
-
-    /**
      * Configures whether chat notifications should be shown when kill limits are reached.
      *
      * @return true if chat notifications should be shown, false otherwise
@@ -70,14 +56,13 @@ public interface MonsterMonitorConfig extends Config {
 
     /**
      * Configures the custom notification message displayed when a kill limit is reached.
-     * The message must include {npc} to be replaced with the NPC's name.
      *
      * @return the custom notification message
      */
     @ConfigItem(
             keyName = "customNotificationMessage",
             name = "Custom Notification Message",
-            description = "Lets users personalize the message displayed when a kill limit is reached. Must include {npc}."
+            description = "Lets you personalize the message displayed when a kill limit is reached. add {npc} for npc name"
     )
     default String customNotificationMessage() {
         return "Kill limit reached for {npc}"; // Default message
@@ -91,10 +76,10 @@ public interface MonsterMonitorConfig extends Config {
     @ConfigItem(
             keyName = "notifyOnUnknownDeathAnimation",
             name = "Notify on Unknown Death Animation",
-            description = "Notify the player when a tracked NPC's unknown death animation is observed."
+            description = "Notify the player when an NPC's unknown death animation is observed."
     )
     default boolean notifyOnUnknownDeathAnimation() {
-        return true; // Default to notifying on unknown death animations
+        return false; // Default to not notifying on unknown death animations
     }
 
     /**

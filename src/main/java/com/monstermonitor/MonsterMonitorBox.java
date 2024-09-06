@@ -13,12 +13,13 @@ import java.awt.*;
 public class MonsterMonitorBox extends JPanel
 {
     private final MonsterMonitorPlugin plugin;
-    private final NpcData npcData;
+    private final NpcData npcData; // Now accessible via a getter
     private boolean optionsVisible; // Tracks whether the dropdown is open
     private final JPanel optionsPanel;
     private final JButton toggleButton;
     private JCheckBox setLimitCheckbox;
     private JSpinner limitSpinner;
+    private JCheckBox notifyCheckbox; // Moved to be a class-level field for better control
 
     /**
      * Constructs the MonsterMonitorBox component and initializes its UI elements.
@@ -31,7 +32,7 @@ public class MonsterMonitorBox extends JPanel
     {
         this.plugin = plugin;
         this.npcData = npcData;
-        this.optionsVisible = initialDropdownState;
+        this.optionsVisible = initialDropdownState; // Use the passed state to set initial dropdown visibility
 
         // Set up the panel with a dark background and padding
         setLayout(new BorderLayout());
@@ -109,8 +110,12 @@ public class MonsterMonitorBox extends JPanel
             boolean isChecked = setLimitCheckbox.isSelected();
             npcData.setLimitSet(isChecked);
             limitSpinner.setEnabled(isChecked); // Enable/disable spinner based on checkbox state
+            notifyCheckbox.setEnabled(isChecked); // Enable/disable notify checkbox based on limit checkbox state
+
             if (!isChecked) {
                 npcData.setKillLimit(0);  // Remove the kill limit if unchecked
+                npcData.setNotifyOnLimit(false); // Uncheck the notify box
+                notifyCheckbox.setSelected(false); // Ensure notify checkbox is unchecked
                 plugin.updateOverlay(); // Update the overlay to remove this NPC
             }
             plugin.getLogger().updateNpcData(npcData); // Save state
@@ -120,8 +125,8 @@ public class MonsterMonitorBox extends JPanel
         // JSpinner for Setting Kill Limit
         int currentLimit = npcData.getKillLimit(); // Load saved kill limit value
         limitSpinner = new JSpinner(new SpinnerNumberModel(
-                currentLimit, 0, 999999, 1));
-        limitSpinner.setPreferredSize(new Dimension(45, 20));
+                currentLimit, 0, 999999, 1)); // Spinner with enough space for 6 digits
+        limitSpinner.setPreferredSize(new Dimension(65, 20)); // Increase width to fit large numbers
         limitSpinner.setEnabled(npcData.isLimitSet()); // Enable only if the limit is set
         limitSpinner.setFont(new Font("Arial", Font.BOLD, 12)); // Bold text
         limitSpinner.addChangeListener(e -> {
@@ -134,11 +139,12 @@ public class MonsterMonitorBox extends JPanel
         });
 
         // NOTIFY Checkbox
-        JCheckBox notifyCheckbox = new JCheckBox("Notify");
+        notifyCheckbox = new JCheckBox("Notify");
         notifyCheckbox.setForeground(Color.LIGHT_GRAY);
         notifyCheckbox.setBackground(new Color(60, 60, 60));
         notifyCheckbox.setFont(new Font("Arial", Font.BOLD, 12)); // Bold text
         notifyCheckbox.setSelected(npcData.isNotifyOnLimit());
+        notifyCheckbox.setEnabled(npcData.isLimitSet()); // Disable if limit is not set
         notifyCheckbox.addActionListener(e -> {
             boolean notifyChecked = notifyCheckbox.isSelected();
             npcData.setNotifyOnLimit(notifyChecked);
@@ -186,5 +192,15 @@ public class MonsterMonitorBox extends JPanel
         {
             toggleOptionsVisibility(); // Ensure dropdown matches the desired state
         }
+    }
+
+    /**
+     * Returns the NpcData associated with this box.
+     *
+     * @return The NpcData object.
+     */
+    public NpcData getNpcData()
+    {
+        return npcData;
     }
 }
