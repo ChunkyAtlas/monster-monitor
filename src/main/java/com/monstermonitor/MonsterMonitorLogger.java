@@ -24,7 +24,6 @@ public class MonsterMonitorLogger
     private static final String BASE_LOG_DIR = System.getProperty("user.home") + "/.runelite/monstermonitor";
     private final Map<String, NpcData> npcLog = new LinkedHashMap<>(); // Use LinkedHashMap to maintain insertion order
     private final Map<String, Integer> unknownAnimations = new LinkedHashMap<>(); // Map to store unknown animations
-    private final Gson gson = new Gson();
     private String lastKilledNpcName;  // Track the last killed NPC's name
     private String playerLogDir; // Directory to store logs specific to the player
     private String logFilePath; // Path to the main log file
@@ -32,6 +31,9 @@ public class MonsterMonitorLogger
 
     @Inject
     private Client client;
+
+    @Inject
+    private Gson gson;
 
     /**
      * Initializes the logger with directories based on the player's name.
