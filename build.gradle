@@ -24,7 +24,7 @@ dependencies {
 	annotationProcessor 'org.projectlombok:lombok:1.18.30'
 
 	// Gson for JSON handling in logging and configuration
-	implementation 'com.google.code.gson:gson:2.8.9'
+	implementation 'com.google.code.gson:gson:2.8.5'
 
 	// Testing dependencies
 	testImplementation 'junit:junit:4.13.1'
