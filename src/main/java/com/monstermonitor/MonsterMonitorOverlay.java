@@ -6,7 +6,6 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
-import net.runelite.client.ui.overlay.OverlayPriority;
 import net.runelite.client.ui.overlay.components.LineComponent;
 import net.runelite.client.ui.overlay.components.PanelComponent;
 import net.runelite.client.ui.overlay.components.TitleComponent;
@@ -51,7 +50,7 @@ public class MonsterMonitorOverlay extends Overlay
         this.plugin = plugin;
         setPosition(OverlayPosition.TOP_LEFT); // Position the overlay at the top left of the screen
         setLayer(OverlayLayer.ABOVE_WIDGETS); // Layer the overlay above widgets
-        setPriority(OverlayPriority.HIGH); // Give the overlay high priority to ensure it is visible
+        setPriority(50); // Give the overlay medium priority to ensure it is visible
 
         // Configure the panelComponent for the overlay
         panelComponent.setBackgroundColor(new Color(45, 45, 45, 200)); // Dark gray with semi-transparency
