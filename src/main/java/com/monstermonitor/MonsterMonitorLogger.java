@@ -15,19 +15,16 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * The MonsterMonitorLogger class is responsible for logging and managing data related to NPC kills
- * and unknown death animations. It handles reading from and writing to log files specific to each player,
- * and maintains the current state of the tracked NPCs and unknown animations.
+ * The MonsterMonitorLogger class is responsible for logging and managing data related to NPC kills.
+ * It handles reading from and writing to log files specific to each player,
+ * and maintains the current state of the tracked NPCs.
  */
 public class MonsterMonitorLogger
 {
     private static final String BASE_LOG_DIR = System.getProperty("user.home") + "/.runelite/monstermonitor";
     private final Map<String, NpcData> npcLog = new LinkedHashMap<>(); // Use LinkedHashMap to maintain insertion order
-    private final Map<String, Integer> unknownAnimations = new LinkedHashMap<>(); // Map to store unknown animations
-    private String lastKilledNpcName;  // Track the last killed NPC's name
     private String playerLogDir; // Directory to store logs specific to the player
     private String logFilePath; // Path to the main log file
-    private String unknownAnimationsFilePath; // Path to log unknown animations
 
     @Inject
     private Client client;
@@ -50,7 +47,6 @@ public class MonsterMonitorLogger
         String playerName = localPlayer.getName();
         playerLogDir = BASE_LOG_DIR + "/" + playerName;
         logFilePath = playerLogDir + "/monster_monitor_log.json";
-        unknownAnimationsFilePath = playerLogDir + "/unknown_death_animations.json";
 
         File directory = new File(playerLogDir);
         if (!directory.exists())
@@ -58,13 +54,8 @@ public class MonsterMonitorLogger
             directory.mkdirs(); // Create the directory if it doesn't exist
         }
 
-        // Ensure the unknown animations file is created, even if not needed right now
-        createEmptyFileIfNotExists(unknownAnimationsFilePath);
         createEmptyFileIfNotExists(logFilePath);
-
-        // Load existing data
-        loadLog();
-        loadUnknownAnimations();
+        loadLog(); // Load existing data
     }
 
     /**
@@ -129,47 +120,14 @@ public class MonsterMonitorLogger
     }
 
     /**
-     * Loads the unknown animations log from the file.
-     * This method ensures that unknown animations encountered in previous sessions are preserved.
-     */
-    private void loadUnknownAnimations()
-    {
-        if (unknownAnimationsFilePath == null)
-        {
-            return;
-        }
-
-        File unknownAnimationsFile = new File(unknownAnimationsFilePath);
-        if (!unknownAnimationsFile.exists())
-        {
-            return;
-        }
-
-        try (FileReader reader = new FileReader(unknownAnimationsFile))
-        {
-            Type type = new TypeToken<Map<String, Integer>>(){}.getType();
-            Map<String, Integer> loadedUnknownAnimations = gson.fromJson(reader, type);
-            if (loadedUnknownAnimations != null)
-            {
-                unknownAnimations.putAll(loadedUnknownAnimations);
-            }
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-        }
-    }
-
-    /**
      * Logs the death of an NPC by updating its kill count and saving the log.
      * Also reorders the log to ensure the last killed NPC is at the top.
      *
      * @param npcName the name of the NPC
-     * @param animationId the ID of the death animation
      */
-    public void logDeath(String npcName, int animationId)
+    public void logDeath(String npcName)
     {
-        NpcData npcData = npcLog.getOrDefault(npcName, new NpcData(npcName, animationId));
+        NpcData npcData = npcLog.getOrDefault(npcName, new NpcData(npcName));
         npcData.incrementKillCount();
         npcLog.remove(npcName); // Remove the NPC if it exists to reinsert it at the top
         npcLog.put(npcName, npcData); // Insert it at the top
@@ -196,64 +154,6 @@ public class MonsterMonitorLogger
         {
             e.printStackTrace();
         }
-    }
-
-    /**
-     * Logs unknown animations that are not recognized as death animations.
-     * Also logs the NPC death in the main log file.
-     *
-     * @param npcName the name of the NPC
-     * @param animationId the ID of the unknown animation
-     */
-    public void logUnknownAnimations(String npcName, int animationId)
-    {
-        if (animationId == -1)
-        {
-            return; // Do not log if the animation ID is -1
-        }
-
-        // Check if the animation is already recognized
-        if (!DeathAnimationIDs.isDeathAnimation(animationId))
-        {
-            // Log in the unknown animations file
-            unknownAnimations.put(npcName, animationId);
-            saveUnknownAnimations(); // Save the unknown animations log
-
-            // Also log the NPC death in the main log file
-            logDeath(npcName, animationId); // This will log the kill like any other NPC
-        }
-    }
-
-    /**
-     * Saves the unknown animations log to the file.
-     * This method is called whenever an unknown animation is logged, ensuring the data is persisted.
-     */
-    private void saveUnknownAnimations()
-    {
-        if (unknownAnimationsFilePath == null)
-        {
-            return;
-        }
-
-        try (FileWriter writer = new FileWriter(new File(unknownAnimationsFilePath)))
-        {
-            gson.toJson(unknownAnimations, writer);
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Retrieves the last logged unknown animation for a given NPC.
-     *
-     * @param npcName the name of the NPC
-     * @return the animation ID of the last unknown animation, or -1 if none is found
-     */
-    public int getLastUnknownAnimations(String npcName)
-    {
-        return unknownAnimations.getOrDefault(npcName, -1);
     }
 
     /**

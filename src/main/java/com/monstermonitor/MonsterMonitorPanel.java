@@ -230,8 +230,8 @@ public class MonsterMonitorPanel extends PluginPanel
 
         JMenuItem resetMenuItem = new JMenuItem("Reset");
         resetMenuItem.addActionListener(ev -> {
-            plugin.getLogger().getNpcLog().remove(npcData.getNpcName()); // Remove the NPC from the log
-            plugin.getLogger().saveLog(); // Save the updated log
+            plugin.logger.getNpcLog().remove(npcData.getNpcName()); // Remove the NPC from the log
+            plugin.logger.saveLog(); // Save the updated log
             plugin.updateOverlay(); // Update the overlay
             updatePanel(); // Refresh the panel
         });
@@ -240,7 +240,7 @@ public class MonsterMonitorPanel extends PluginPanel
         resetKillLimitMenuItem.addActionListener(ev -> {
             npcData.setKillLimit(0); // Reset the kill limit to zero
             npcData.resetKillCountForLimit(); // Reset the kill count towards the limit
-            plugin.getLogger().updateNpcData(npcData); // Save the updated data
+            plugin.logger.updateNpcData(npcData); // Save the updated data
             plugin.updateOverlay(); // Update the overlay
             updatePanel(); // Refresh the panel
         });

@@ -9,17 +9,16 @@ import java.awt.*;
  * set kill limits, enable notifications, and other related settings.
  * This component also supports expanding and collapsing additional options via a dropdown.
  */
-
 public class MonsterMonitorBox extends JPanel
 {
     private final MonsterMonitorPlugin plugin;
-    private final NpcData npcData; // Now accessible via a getter
+    private final NpcData npcData;
     private boolean optionsVisible; // Tracks whether the dropdown is open
     private final JPanel optionsPanel;
     private final JButton toggleButton;
     private JCheckBox setLimitCheckbox;
     private JSpinner limitSpinner;
-    private JCheckBox notifyCheckbox; // Moved to be a class-level field for better control
+    private JCheckBox notifyCheckbox;
 
     /**
      * Constructs the MonsterMonitorBox component and initializes its UI elements.
@@ -32,28 +31,27 @@ public class MonsterMonitorBox extends JPanel
     {
         this.plugin = plugin;
         this.npcData = npcData;
-        this.optionsVisible = initialDropdownState; // Use the passed state to set initial dropdown visibility
+        this.optionsVisible = initialDropdownState;
 
-        // Set up the panel with a dark background and padding
         setLayout(new BorderLayout());
         setBackground(new Color(60, 60, 60));
         setBorder(BorderFactory.createLineBorder(Color.GRAY));
 
-        // NPC name and kill count label, aligned to the left
+        // NPC name and kill count label
         JLabel npcNameLabel = new JLabel(npcData.getNpcName() + " x " + npcData.getTotalKillCount());
-        npcNameLabel.setForeground(new Color(200, 200, 200)); // Light gray text
-        npcNameLabel.setFont(new Font("Arial", Font.BOLD, 12)); // Bold text
+        npcNameLabel.setForeground(new Color(200, 200, 200));
+        npcNameLabel.setFont(new Font("Arial", Font.BOLD, 12));
         npcNameLabel.setHorizontalAlignment(SwingConstants.LEFT);
-        npcNameLabel.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5)); // Adjust padding inside the label
+        npcNameLabel.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
         add(npcNameLabel, BorderLayout.WEST);
 
-        // Toggle button for the dropdown, aligned to the right
+        // Toggle button for the dropdown
         toggleButton = new JButton(optionsVisible ? "▲" : "▼");
         toggleButton.setPreferredSize(new Dimension(16, 16));
         toggleButton.setBorder(BorderFactory.createEmptyBorder());
         toggleButton.setContentAreaFilled(false);
         toggleButton.setFocusPainted(false);
-        toggleButton.setForeground(new Color(200, 150, 0)); // Orange arrow color
+        toggleButton.setForeground(new Color(200, 150, 0));
 
         toggleButton.addActionListener(e -> toggleOptionsVisibility());
         add(toggleButton, BorderLayout.EAST);
@@ -61,7 +59,7 @@ public class MonsterMonitorBox extends JPanel
         // Create the options panel
         optionsPanel = createOptionsPanel();
         if (optionsVisible) {
-            add(optionsPanel, BorderLayout.SOUTH); // Show the options panel if the dropdown is initially open
+            add(optionsPanel, BorderLayout.SOUTH);
         }
     }
 
@@ -104,51 +102,45 @@ public class MonsterMonitorBox extends JPanel
         setLimitCheckbox = new JCheckBox("Set Limit");
         setLimitCheckbox.setForeground(Color.LIGHT_GRAY);
         setLimitCheckbox.setBackground(new Color(60, 60, 60));
-        setLimitCheckbox.setFont(new Font("Arial", Font.BOLD, 12)); // Bold text
+        setLimitCheckbox.setFont(new Font("Arial", Font.BOLD, 12));
         setLimitCheckbox.setSelected(npcData.isLimitSet());
         setLimitCheckbox.addActionListener(e -> {
             boolean isChecked = setLimitCheckbox.isSelected();
             npcData.setLimitSet(isChecked);
-            limitSpinner.setEnabled(isChecked); // Enable/disable spinner based on checkbox state
-            notifyCheckbox.setEnabled(isChecked); // Enable/disable notify checkbox based on limit checkbox state
+            limitSpinner.setEnabled(isChecked);
+            notifyCheckbox.setEnabled(isChecked);
 
             if (!isChecked) {
-                npcData.setKillLimit(0);  // Remove the kill limit if unchecked
-                npcData.setNotifyOnLimit(false); // Uncheck the notify box
-                notifyCheckbox.setSelected(false); // Ensure notify checkbox is unchecked
-                plugin.updateOverlay(); // Update the overlay to remove this NPC
+                npcData.setKillLimit(0);
+                npcData.resetKillCountForLimit();
+                plugin.updateOverlay();
             }
-            plugin.getLogger().updateNpcData(npcData); // Save state
-            updatePanelDirectly(); // Directly refresh the panel
+            plugin.logger.updateNpcData(npcData);
+            updatePanelDirectly();
         });
 
         // JSpinner for Setting Kill Limit
-        int currentLimit = npcData.getKillLimit(); // Load saved kill limit value
-        limitSpinner = new JSpinner(new SpinnerNumberModel(
-                currentLimit, 0, 999999, 1)); // Spinner with enough space for 6 digits
-        limitSpinner.setPreferredSize(new Dimension(65, 20)); // Increase width to fit large numbers
-        limitSpinner.setEnabled(npcData.isLimitSet()); // Enable only if the limit is set
-        limitSpinner.setFont(new Font("Arial", Font.BOLD, 12)); // Bold text
+        limitSpinner = new JSpinner(new SpinnerNumberModel(npcData.getKillLimit(), 0, 999999, 1));
+        limitSpinner.setPreferredSize(new Dimension(65, 20));
+        limitSpinner.setEnabled(npcData.isLimitSet());
+        limitSpinner.setFont(new Font("Arial", Font.BOLD, 12));
         limitSpinner.addChangeListener(e -> {
             int limit = (Integer) limitSpinner.getValue();
-            int killCountForLimit = npcData.getKillCountForLimit(); // Preserve progress
             npcData.setKillLimit(limit);
-            npcData.setKillCountForLimit(killCountForLimit); // Set the preserved progress
-            plugin.getLogger().updateNpcData(npcData); // Save the NPC data with its new limit
-            plugin.updateOverlay(); // Ensure overlay updates with new limit
+            plugin.logger.updateNpcData(npcData);
+            plugin.updateOverlay();
         });
 
         // NOTIFY Checkbox
         notifyCheckbox = new JCheckBox("Notify");
         notifyCheckbox.setForeground(Color.LIGHT_GRAY);
         notifyCheckbox.setBackground(new Color(60, 60, 60));
-        notifyCheckbox.setFont(new Font("Arial", Font.BOLD, 12)); // Bold text
+        notifyCheckbox.setFont(new Font("Arial", Font.BOLD, 12));
         notifyCheckbox.setSelected(npcData.isNotifyOnLimit());
-        notifyCheckbox.setEnabled(npcData.isLimitSet()); // Disable if limit is not set
+        notifyCheckbox.setEnabled(npcData.isLimitSet());
         notifyCheckbox.addActionListener(e -> {
-            boolean notifyChecked = notifyCheckbox.isSelected();
-            npcData.setNotifyOnLimit(notifyChecked);
-            plugin.getLogger().updateNpcData(npcData); // Save state
+            npcData.setNotifyOnLimit(notifyCheckbox.isSelected());
+            plugin.logger.updateNpcData(npcData);
         });
 
         panel.add(setLimitCheckbox);
@@ -164,11 +156,20 @@ public class MonsterMonitorBox extends JPanel
      */
     private void updatePanelDirectly()
     {
-        // Directly access the parent panel and refresh it
         Container parent = getParent();
         if (parent instanceof MonsterMonitorPanel) {
             ((MonsterMonitorPanel) parent).updatePanel();
         }
+    }
+
+    /**
+     * Returns the NpcData associated with this box.
+     *
+     * @return The NpcData object.
+     */
+    public NpcData getNpcData()
+    {
+        return npcData;
     }
 
     /**
@@ -192,15 +193,5 @@ public class MonsterMonitorBox extends JPanel
         {
             toggleOptionsVisibility(); // Ensure dropdown matches the desired state
         }
-    }
-
-    /**
-     * Returns the NpcData associated with this box.
-     *
-     * @return The NpcData object.
-     */
-    public NpcData getNpcData()
-    {
-        return npcData;
     }
 }

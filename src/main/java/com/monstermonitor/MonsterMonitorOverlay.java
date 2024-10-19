@@ -19,12 +19,11 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Represents the overlay used in the Monster Monitor.
+ * Represents the overlay used in Monster Monitor.
  * This overlay displays information about tracked NPCs, such as their names and the number of kills
  * towards a specified kill limit. The overlay is positioned in the top left of the game screen,
  * with a semi-transparent dark background.
  */
-
 public class MonsterMonitorOverlay extends Overlay
 {
     private List<NpcData> trackedNpcs; // List of NPCs being tracked for the overlay

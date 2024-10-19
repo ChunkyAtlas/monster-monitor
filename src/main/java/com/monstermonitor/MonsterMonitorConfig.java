@@ -69,20 +69,6 @@ public interface MonsterMonitorConfig extends Config {
     }
 
     /**
-     * Configures whether to notify the player on observing an unknown death animation.
-     *
-     * @return true if notifications should be sent for unknown death animations, false otherwise
-     */
-    @ConfigItem(
-            keyName = "notifyOnUnknownDeathAnimation",
-            name = "Notify on Unknown Death Animation",
-            description = "Notify the player when an NPC's unknown death animation is observed."
-    )
-    default boolean notifyOnUnknownDeathAnimation() {
-        return false; // Default to not notifying on unknown death animations
-    }
-
-    /**
      * Configures whether sound alerts should be enabled for notifications.
      *
      * @return true if sound alerts should be enabled, false otherwise

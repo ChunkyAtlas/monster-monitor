@@ -6,7 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 /**
- * Represents the data associated with an NPC being tracked by the Monster Monitor plugin.
+ * Represents the data associated with an NPC being tracked by Monster Monitor.
  * This class holds information such as the NPC's name, kill counts, kill limits,
  * and whether notifications should be sent when a kill limit is reached.
  */
@@ -20,21 +20,18 @@ public class NpcData
     private int totalKillCount; // Total kills of this NPC
     private int killCountForLimit; // Progress towards the kill limit
     private int killLimit; // The set kill limit for this NPC
-    private int deathAnimationId; // Death animation ID of the NPC
     private boolean limitSet; // Flag to track if the limit is set
     private boolean notifyOnLimit; // Flag to determine if notifications should be sent when the kill limit is reached
 
     /**
-     * Constructor to create an NpcData object with just the NPC name and death animation ID.
+     * Constructor to create an NpcData object with just the NPC name.
      * Initializes other fields to default values.
      *
      * @param npcName the name of the NPC
-     * @param deathAnimationId the ID of the death animation for the NPC
      */
-    public NpcData(String npcName, int deathAnimationId)
+    public NpcData(String npcName)
     {
         this.npcName = npcName;
-        this.deathAnimationId = deathAnimationId;
         this.totalKillCount = 0;
         this.killCountForLimit = 0;
         this.killLimit = 0; // No limit by default

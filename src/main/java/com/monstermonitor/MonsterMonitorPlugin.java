@@ -3,10 +3,7 @@ package com.monstermonitor;
 import com.google.inject.Provides;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
-import net.runelite.api.NPC;
-import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.GameTick;
-import net.runelite.api.events.NpcDespawned;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -38,31 +35,31 @@ import java.util.stream.Collectors;
 public class MonsterMonitorPlugin extends Plugin
 {
     @Inject
-    private MonsterMonitorConfig config;
+    MonsterMonitorConfig config;
 
     @Inject
-    private MonsterMonitorLogger logger;
+    MonsterMonitorLogger logger;
 
     @Inject
-    private MonsterMonitorOverlay overlay;
+    MonsterMonitorOverlay overlay;
 
     @Inject
-    private MonsterMonitorPanel panel;
+    MonsterMonitorPanel panel;
 
     @Inject
-    private OverlayManager overlayManager;
+    OverlayManager overlayManager;
 
     @Inject
-    private ClientToolbar clientToolbar;
+    ClientToolbar clientToolbar;
 
     @Inject
-    private Client client;
+    Client client;
 
     @Inject
-    private ClientThread clientThread;
+    ClientThread clientThread;
 
     @Inject
-    private NpcAnimationTracker npcAnimationTracker;
+    DeathTracker deathTracker; // Updated reference to DeathTracker
 
     private NavigationButton navButton;
     private boolean initialized = false;
@@ -106,17 +103,16 @@ public class MonsterMonitorPlugin extends Plugin
 
         updateOverlayVisibility(); // Apply the overlay visibility setting
 
-        // Apply the custom scrollbar on the client thread to ensure proper initialization
         clientThread.invokeLater(() -> {
-            Component parent = panel.getParent(); // Get parent of the panel
+            Component parent = panel.getParent();
             while (parent != null && !(parent instanceof JScrollPane)) {
-                parent = parent.getParent(); // Traverse upwards to find the JScrollPane
+                parent = parent.getParent();
             }
 
             if (parent instanceof JScrollPane) {
                 JScrollPane scrollPane = (JScrollPane) parent;
                 scrollPane.getVerticalScrollBar().setUI(new MonsterMonitorPanel.CustomScrollBarUI(new Color(200, 150, 0)));
-                scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(2, 0)); // Set scrollbar width
+                scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(2, 0));
             }
         });
     }
@@ -134,9 +130,9 @@ public class MonsterMonitorPlugin extends Plugin
         clientToolbar.removeNavigation(navButton);
         if (logger != null && initialized)
         {
-            logger.saveLog(); // Save log on shutdown
+            logger.saveLog();
         }
-        initialized = false; // Reset initialization flag
+        initialized = false;
     }
 
     /**
@@ -147,97 +143,28 @@ public class MonsterMonitorPlugin extends Plugin
     @Subscribe
     public void onGameTick(GameTick event) {
         if (!initialized && client.getLocalPlayer() != null) {
-            logger.initialize(); // Initialize the logger
-            logger.loadLog(); // Load the log data
-
-            updateOverlay(); // Update the overlay
-            panel.updatePanel(); // Update the panel
-
-            initialized = true; // Mark as initialized
+            logger.initialize();
+            logger.loadLog();
+            updateOverlay();
+            panel.updatePanel();
+            initialized = true;
         }
     }
 
     /**
-     * Handles the animation changed event for NPCs.
-     * Tracks the NPC animations for further processing by the NPC animation tracker.
-     *
-     * @param event the animation changed event
-     */
-    @Subscribe
-    public void onAnimationChanged(AnimationChanged event)
-    {
-        if (event.getActor() instanceof NPC)
-        {
-            NPC npc = (NPC) event.getActor();
-            npcAnimationTracker.trackNpc(npc);  // Track the NPC animation
-        }
-    }
-
-    /**
-     * Handles the NPC despawned event.
-     * Tracks the NPC state when it despawns using the NPC animation tracker.
-     *
-     * @param event the NPC despawned event
-     */
-    @Subscribe
-    public void onNpcDespawned(NpcDespawned event)
-    {
-        NPC npc = event.getNpc();
-        npcAnimationTracker.trackNpc(npc);  // Handle despawn by tracking the NPC state
-    }
-
-    /**
-     * Logs the death animation of an NPC.
+     * Logs the death of an NPC.
      * Updates the UI and checks if the kill limit has been reached.
      *
      * @param npcName the name of the NPC
-     * @param animationId the ID of the death animation
      */
-    public void logDeathAnimation(String npcName, int animationId) {
+    public void logDeath(String npcName) {
         if (initialized)
         {
-            logger.logDeath(npcName, animationId);
+            logger.logDeath(npcName);
             updateUI();
             checkKillLimit(npcName);
         }
     }
-
-    /**
-     * Logs an unknown death animation for an NPC.
-     * Updates the UI and checks if the kill limit has been reached. Notifies player on First Unknown Death Animation
-     * Instance.
-     *
-     * @param npcName the name of the NPC
-     * @param animationId the ID of the unknown animation
-     */
-    public void logUnknownDeathAnimation(String npcName, int animationId) {
-        if (initialized)
-        {
-            // Check if this NPC and animation have already been notified as unknown
-            int lastLoggedAnimation = logger.getLastUnknownAnimations(npcName);
-
-            // Log the unknown animation every time
-            logger.logUnknownAnimations(npcName, animationId);
-
-            // Only notify the player if it's the first time seeing this unknown animation for the NPC
-            if (lastLoggedAnimation != animationId && config.notifyOnUnknownDeathAnimation())
-            {
-                if (config.enableSoundAlerts())
-                {
-                    Toolkit.getDefaultToolkit().beep(); // Sound alert
-                }
-                if (config.showChatNotifications())
-                {
-                    String message = "<col=ff0000>Unknown death animation logged for {npc}</col>".replace("{npc}", npcName);
-                    client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", message, null);
-                }
-            }
-
-            updateUI();
-            checkKillLimit(npcName);
-        }
-    }
-
 
     /**
      * Updates the plugin's UI components.
@@ -247,7 +174,6 @@ public class MonsterMonitorPlugin extends Plugin
     {
         if (initialized)
         {
-            // Run the UI update on the main client thread to ensure it happens immediately
             clientThread.invoke(() -> {
                 updateOverlay();
                 panel.updatePanel();
@@ -270,7 +196,7 @@ public class MonsterMonitorPlugin extends Plugin
         NpcData npcData = logger.getNpcLog().get(npcName);
         if (npcData == null)
         {
-            return; // No data available for this NPC, skip checking
+            return;
         }
 
         int killLimit = npcData.getKillLimit();
@@ -280,16 +206,14 @@ public class MonsterMonitorPlugin extends Plugin
         {
             if (config.notifyOnLimit())
             {
-                // Notify the player when kill limit is reached
                 if (config.enableSoundAlerts())
                 {
-                    Toolkit.getDefaultToolkit().beep(); // Sound alert
+                    Toolkit.getDefaultToolkit().beep();
                 }
                 if (config.showChatNotifications())
                 {
                     String message = "<col=ff0000>" + config.customNotificationMessage().replace("{npc}", npcName) + "</col>";
                     client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", message, null);
-
                 }
             }
         }
@@ -306,18 +230,7 @@ public class MonsterMonitorPlugin extends Plugin
     }
 
     /**
-     * Retrieves the logger instance used by the plugin.
-     *
-     * @return the MonsterMonitorLogger instance
-     */
-    public MonsterMonitorLogger getLogger()
-    {
-        return logger;
-    }
-
-    /**
      * Updates the data displayed on the overlay.
-     * This method is called whenever tracked NPC data changes.
      */
     public void updateOverlay()
     {
@@ -326,7 +239,6 @@ public class MonsterMonitorPlugin extends Plugin
 
     /**
      * Updates the visibility of the overlay based on the plugin configuration.
-     * Adds or removes the overlay from the overlay manager accordingly.
      */
     private void updateOverlayVisibility()
     {
@@ -338,8 +250,6 @@ public class MonsterMonitorPlugin extends Plugin
         {
             overlayManager.remove(overlay);
         }
-
-        // Force update overlay data
         updateOverlay();
     }
 
@@ -361,9 +271,7 @@ public class MonsterMonitorPlugin extends Plugin
             case "notifyOnLimit":
             case "showChatNotifications":
             case "customNotificationMessage":
-            case "notifyOnUnknownDeathAnimation":
             case "enableSoundAlerts":
-                // Apply changes immediately
                 updateUI();
                 break;
         }
