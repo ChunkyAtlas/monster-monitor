@@ -12,20 +12,10 @@ The **Monster Monitor** plugin is a RuneLite plugin designed to help players tra
 - **Dynamic Overlay**: Displays the NPCs you're currently tracking along with their respective kill counts and limits in a customizable overlay.
 - **Reset Options**: Easily reset kill counts or remove an NPC from tracking via the plugin panel’s context menu.
 
-## Sending Log Files for Unknown Animations
-
-The plugin logs any unknown death animations to help improve the accuracy and comprehensiveness of the plugin. These logs are saved to your system and can be sent to me for updates.
-
 ### Log File Locations:
 
 - **Main Log File**: `~/.runelite/monstermonitor/your_player_name/monster_monitor_log.json`
-- **Unknown Animations Log**: `~/.runelite/monstermonitor/your_player_name/unknown_death_animations.json`
 
-### How to Send Log Files:
-
-1. **Locate the Log Files**: Navigate to the directory listed above to find the log files.
-2. **Send the Files**: Send the `unknown_death_animations.json` file (and optionally the `monster_monitor_log.json` file) to me via monstermonitor@proton.me.
-3. **Update the Plugin**: I will use these logs to update the plugin with new death animation IDs, improving its functionality.
 
 ## Usage
 
