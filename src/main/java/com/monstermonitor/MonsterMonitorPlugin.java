@@ -124,13 +124,16 @@ public class MonsterMonitorPlugin extends Plugin
      * @throws Exception if an error occurs during shutdown
      */
     @Override
-    protected void shutDown() throws Exception
-    {
+    protected void shutDown() throws Exception {
         overlayManager.remove(overlay);
         clientToolbar.removeNavigation(navButton);
-        if (logger != null && initialized)
-        {
-            logger.saveLog();
+
+        if (deathTracker != null) {
+            deathTracker.unregister();
+        }
+
+        if (logger != null && initialized) {
+            logger.saveLog(); // Save log on shutdown
         }
         initialized = false;
     }
