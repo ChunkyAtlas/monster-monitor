@@ -22,7 +22,8 @@ import java.util.concurrent.Executors;
  */
 @Getter
 @Setter
-public class DeathTracker {
+public class
+DeathTracker {
     private final Client client;
     private final MonsterMonitorPlugin plugin;
     private final MonsterMonitorLogger logger;
