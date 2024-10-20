@@ -4,6 +4,8 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import net.runelite.api.Client;
 import net.runelite.api.Player;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -19,8 +21,8 @@ import java.util.Map;
  * It handles reading from and writing to log files specific to each player,
  * and maintains the current state of the tracked NPCs.
  */
-public class MonsterMonitorLogger
-{
+public class MonsterMonitorLogger {
+    private static final Logger logger = LoggerFactory.getLogger(MonsterMonitorLogger.class);
     private static final String BASE_LOG_DIR = System.getProperty("user.home") + "/.runelite/monstermonitor";
     private final Map<String, NpcData> npcLog = new LinkedHashMap<>(); // Use LinkedHashMap to maintain insertion order
     private String playerLogDir; // Directory to store logs specific to the player
@@ -36,11 +38,9 @@ public class MonsterMonitorLogger
      * Initializes the logger with directories based on the player's name.
      * Creates necessary directories and files if they don't exist, and loads existing log data.
      */
-    public void initialize()
-    {
+    public void initialize() {
         Player localPlayer = client.getLocalPlayer();
-        if (localPlayer == null)
-        {
+        if (localPlayer == null) {
             return; // Exit early if the player is not yet initialized
         }
 
@@ -49,8 +49,7 @@ public class MonsterMonitorLogger
         logFilePath = playerLogDir + "/monster_monitor_log.json";
 
         File directory = new File(playerLogDir);
-        if (!directory.exists())
-        {
+        if (!directory.exists()) {
             directory.mkdirs(); // Create the directory if it doesn't exist
         }
 
@@ -63,18 +62,13 @@ public class MonsterMonitorLogger
      *
      * @param filePath the path to the file that needs to be checked/created
      */
-    private void createEmptyFileIfNotExists(String filePath)
-    {
+    private void createEmptyFileIfNotExists(String filePath) {
         File file = new File(filePath);
-        if (!file.exists())
-        {
-            try
-            {
+        if (!file.exists()) {
+            try {
                 file.createNewFile();
-            }
-            catch (IOException e)
-            {
-                e.printStackTrace();
+            } catch (IOException e) {
+                logger.error("Failed to create new log file at {}", filePath, e);
             }
         }
     }
@@ -83,39 +77,29 @@ public class MonsterMonitorLogger
      * Loads the NPC log from the file, or creates a new file if it doesn't exist.
      * This method ensures that the NPC log is populated with data from previous sessions.
      */
-    public void loadLog()
-    {
-        if (logFilePath == null)
-        {
+    public void loadLog() {
+        if (logFilePath == null) {
             return;
         }
 
         File logFile = new File(logFilePath);
-        if (!logFile.exists())
-        {
-            try
-            {
+        if (!logFile.exists()) {
+            try {
                 logFile.createNewFile();
                 saveLog();  // Save the log (with initial empty data)
-            }
-            catch (IOException e)
-            {
-                e.printStackTrace();
+            } catch (IOException e) {
+                logger.error("Failed to create new log file during load at {}", logFilePath, e);
             }
         }
 
-        try (FileReader reader = new FileReader(logFile))
-        {
-            Type type = new TypeToken<Map<String, NpcData>>(){}.getType();
+        try (FileReader reader = new FileReader(logFile)) {
+            Type type = new TypeToken<Map<String, NpcData>>() {}.getType();
             Map<String, NpcData> loadedLog = gson.fromJson(reader, type);
-            if (loadedLog != null)
-            {
+            if (loadedLog != null) {
                 npcLog.putAll(loadedLog); // Load the NPC log from the file
             }
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
+        } catch (IOException e) {
+            logger.error("Failed to load log data from {}", logFilePath, e);
         }
     }
 
@@ -125,8 +109,7 @@ public class MonsterMonitorLogger
      *
      * @param npcName the name of the NPC
      */
-    public void logDeath(String npcName)
-    {
+    public void logDeath(String npcName) {
         NpcData npcData = npcLog.getOrDefault(npcName, new NpcData(npcName));
         npcData.incrementKillCount();
         npcLog.remove(npcName); // Remove the NPC if it exists to reinsert it at the top
@@ -139,20 +122,15 @@ public class MonsterMonitorLogger
      * Saves the current NPC log to the file.
      * This method is called whenever NPC data is updated to ensure persistence.
      */
-    public void saveLog()
-    {
-        if (logFilePath == null)
-        {
+    public void saveLog() {
+        if (logFilePath == null) {
             return;
         }
 
-        try (FileWriter writer = new FileWriter(new File(logFilePath)))
-        {
+        try (FileWriter writer = new FileWriter(new File(logFilePath))) {
             gson.toJson(npcLog, writer);
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
+        } catch (IOException e) {
+            logger.error("Failed to save log data to {}", logFilePath, e);
         }
     }
 
@@ -161,8 +139,7 @@ public class MonsterMonitorLogger
      *
      * @return a map containing the NPC log data
      */
-    public Map<String, NpcData> getNpcLog()
-    {
+    public Map<String, NpcData> getNpcLog() {
         return npcLog;
     }
 
@@ -171,8 +148,7 @@ public class MonsterMonitorLogger
      *
      * @param npcData the updated data for the NPC
      */
-    public void updateNpcData(NpcData npcData)
-    {
+    public void updateNpcData(NpcData npcData) {
         npcLog.put(npcData.getNpcName(), npcData);
         saveLog();
     }
