@@ -90,7 +90,7 @@ public class MonsterMonitorPlugin extends Plugin
 
         eventBus.register(deathTracker);
 
-        clientThread.invokeLater(() -> {
+        SwingUtilities.invokeLater(() -> {
             Component parent = panel.getParent();
             while (parent != null && !(parent instanceof JScrollPane)) {
                 parent = parent.getParent();
@@ -101,6 +101,7 @@ public class MonsterMonitorPlugin extends Plugin
                 scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(2, 0));
             }
         });
+
     }
 
     @Override
