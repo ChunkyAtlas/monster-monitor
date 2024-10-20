@@ -14,6 +14,7 @@ import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ImageUtil;
+import net.runelite.client.eventbus.EventBus;
 
 import javax.inject.Inject;
 import javax.swing.*;
@@ -22,11 +23,6 @@ import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * The main plugin class for Monster Monitor.
- * This plugin tracks NPC kills, allows setting kill limits, and provides an overlay and panel for monitoring.
- * It also manages event subscriptions and handles the lifecycle of the plugin.
- */
 @PluginDescriptor(
         name = "Monster Monitor",
         description = "Tracks NPC kills and allows setting kill limits",
@@ -36,6 +32,9 @@ public class MonsterMonitorPlugin extends Plugin
 {
     @Inject
     MonsterMonitorConfig config;
+
+    @Inject
+    private EventBus eventBus;
 
     @Inject
     MonsterMonitorLogger logger;
@@ -59,40 +58,27 @@ public class MonsterMonitorPlugin extends Plugin
     ClientThread clientThread;
 
     @Inject
-    DeathTracker deathTracker; // Updated reference to DeathTracker
+    DeathTracker deathTracker;
 
     private NavigationButton navButton;
     private boolean initialized = false;
 
-    /**
-     * Provides the configuration for the Monster Monitor plugin.
-     *
-     * @param configManager the configuration manager
-     * @return the Monster Monitor plugin configuration
-     */
     @Provides
     MonsterMonitorConfig provideConfig(ConfigManager configManager)
     {
         return configManager.getConfig(MonsterMonitorConfig.class);
     }
 
-    /**
-     * Starts up the Monster Monitor plugin.
-     * Initializes the logger and sets up the UI components such as the navigation button.
-     *
-     * @throws Exception if an error occurs during startup
-     */
     @Override
     protected void startUp() throws Exception
     {
         clientThread.invoke(() -> {
             if (client.getLocalPlayer() != null)
             {
-                logger.initialize(); // Initialize logger with player-specific directory
+                logger.initialize();
             }
         });
 
-        // Set up the navigation button in the RuneLite sidebar
         final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/net/runelite/client/plugins/MonsterMonitor/icon.png");
         navButton = NavigationButton.builder()
                 .tooltip("Monster Monitor")
@@ -100,15 +86,15 @@ public class MonsterMonitorPlugin extends Plugin
                 .panel(panel)
                 .build();
         clientToolbar.addNavigation(navButton);
+        updateOverlayVisibility();
 
-        updateOverlayVisibility(); // Apply the overlay visibility setting
+        eventBus.register(deathTracker);
 
         clientThread.invokeLater(() -> {
             Component parent = panel.getParent();
             while (parent != null && !(parent instanceof JScrollPane)) {
                 parent = parent.getParent();
             }
-
             if (parent instanceof JScrollPane) {
                 JScrollPane scrollPane = (JScrollPane) parent;
                 scrollPane.getVerticalScrollBar().setUI(new MonsterMonitorPanel.CustomScrollBarUI(new Color(200, 150, 0)));
@@ -117,35 +103,26 @@ public class MonsterMonitorPlugin extends Plugin
         });
     }
 
-    /**
-     * Shuts down the Monster Monitor plugin.
-     * Cleans up the UI components and saves the log data.
-     *
-     * @throws Exception if an error occurs during shutdown
-     */
     @Override
-    protected void shutDown() throws Exception {
+    protected void shutDown() throws Exception
+    {
         overlayManager.remove(overlay);
         clientToolbar.removeNavigation(navButton);
 
-        if (deathTracker != null) {
-            deathTracker.unregister();
-        }
+        eventBus.unregister(deathTracker);
 
-        if (logger != null && initialized) {
-            logger.saveLog(); // Save log on shutdown
+        if (logger != null && initialized)
+        {
+            logger.saveLog();
         }
         initialized = false;
     }
 
-    /**
-     * Handles the game tick event to initialize the plugin components when the player is present.
-     *
-     * @param event the game tick event
-     */
     @Subscribe
-    public void onGameTick(GameTick event) {
-        if (!initialized && client.getLocalPlayer() != null) {
+    public void onGameTick(GameTick event)
+    {
+        if (!initialized && client.getLocalPlayer() != null)
+        {
             logger.initialize();
             logger.loadLog();
             updateOverlay();
@@ -154,13 +131,8 @@ public class MonsterMonitorPlugin extends Plugin
         }
     }
 
-    /**
-     * Logs the death of an NPC.
-     * Updates the UI and checks if the kill limit has been reached.
-     *
-     * @param npcName the name of the NPC
-     */
-    public void logDeath(String npcName) {
+    public void logDeath(String npcName)
+    {
         if (initialized)
         {
             logger.logDeath(npcName);
@@ -169,10 +141,6 @@ public class MonsterMonitorPlugin extends Plugin
         }
     }
 
-    /**
-     * Updates the plugin's UI components.
-     * Ensures the updates are run on the main client thread.
-     */
     public void updateUI()
     {
         if (initialized)
@@ -184,11 +152,6 @@ public class MonsterMonitorPlugin extends Plugin
         }
     }
 
-    /**
-     * Checks if the kill limit for an NPC has been reached and notifies the player if necessary.
-     *
-     * @param npcName the name of the NPC
-     */
     private void checkKillLimit(String npcName)
     {
         if (!initialized)
@@ -222,27 +185,16 @@ public class MonsterMonitorPlugin extends Plugin
         }
     }
 
-    /**
-     * Retrieves the list of NPCs currently being tracked by the plugin.
-     *
-     * @return a list of NpcData objects representing tracked NPCs
-     */
     public List<NpcData> getTrackedNpcs()
     {
         return logger.getNpcLog().values().stream().collect(Collectors.toList());
     }
 
-    /**
-     * Updates the data displayed on the overlay.
-     */
     public void updateOverlay()
     {
         overlay.updateOverlayData(getTrackedNpcs());
     }
 
-    /**
-     * Updates the visibility of the overlay based on the plugin configuration.
-     */
     private void updateOverlayVisibility()
     {
         if (config.showOverlay())
@@ -256,13 +208,9 @@ public class MonsterMonitorPlugin extends Plugin
         updateOverlay();
     }
 
-    /**
-     * Handles configuration changes and updates the plugin settings immediately.
-     *
-     * @param event the config changed event
-     */
     @Subscribe
-    public void onConfigChanged(ConfigChanged event) {
+    public void onConfigChanged(ConfigChanged event)
+    {
         if (!event.getGroup().equals("monster monitor")) {
             return;
         }
