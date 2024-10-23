@@ -8,7 +8,7 @@ import lombok.AllArgsConstructor;
 /**
  * Represents the data associated with an NPC being tracked by Monster Monitor.
  * This class holds information such as the NPC's name, kill counts, kill limits,
- * and whether notifications should be sent when a kill limit is reached.
+ * whether the NPC is ignored (not logged), and whether notifications should be sent when a kill limit is reached.
  */
 @Getter
 @Setter
@@ -22,6 +22,7 @@ public class NpcData
     private int killLimit; // The set kill limit for this NPC
     private boolean limitSet; // Flag to track if the limit is set
     private boolean notifyOnLimit; // Flag to determine if notifications should be sent when the kill limit is reached
+    private boolean ignored; // Flag to indicate if the NPC is ignored (true = ignored, false = tracked)
 
     /**
      * Constructor to create an NpcData object with just the NPC name.
@@ -37,16 +38,20 @@ public class NpcData
         this.killLimit = 0; // No limit by default
         this.limitSet = false; // Default to not set
         this.notifyOnLimit = false; // Default to not notify
+        this.ignored = false; // Default to not ignored (tracked)
     }
 
     /**
      * Increment the total kill count and the kill count towards the limit.
      * This method is typically called when the player kills the tracked NPC.
+     * Ignores incrementing counts if the NPC is marked as ignored.
      */
     public void incrementKillCount()
     {
-        this.totalKillCount++;
-        this.killCountForLimit++;
+        if (!ignored) {
+            this.totalKillCount++;
+            this.killCountForLimit++;
+        }
     }
 
     /**
@@ -68,5 +73,16 @@ public class NpcData
     public void resetKillCountForLimit()
     {
         this.killCountForLimit = 0;
+    }
+
+    /**
+     * Checks if the NPC should be tracked in the overlay based on its ignored state.
+     * This is useful for ensuring ignored NPCs don't appear in the monitoring section.
+     *
+     * @return true if the NPC should be tracked, false if it is ignored.
+     */
+    public boolean isTrackable()
+    {
+        return !ignored;
     }
 }

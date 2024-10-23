@@ -81,4 +81,18 @@ public interface MonsterMonitorConfig extends Config {
     default boolean enableSoundAlerts() {
         return true; // Default to enabling sound alerts
     }
+
+    /**
+     * Configures whether right-click menu entries should be displayed.
+     *
+     * @return true if the right-click menu entries should be shown, false otherwise
+     */
+    @ConfigItem(
+            keyName = "showRightClickMenuEntries",
+            name = "Show Right-Click Menu Entries",
+            description = "Toggle to show or hide the right-click menu entries for NPCs."
+    )
+    default boolean showRightClickMenuEntries() {
+        return true; // Default to showing right-click menu entries
+    }
 }

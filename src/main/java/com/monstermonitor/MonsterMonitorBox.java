@@ -15,7 +15,7 @@ public class MonsterMonitorBox extends JPanel
     private final NpcData npcData;
     private boolean optionsVisible; // Tracks whether the dropdown is open
     private final JPanel optionsPanel;
-    private final JButton toggleButton;
+    private JButton toggleButton;
     private JCheckBox setLimitCheckbox;
     private JSpinner limitSpinner;
     private JCheckBox notifyCheckbox;
@@ -37,15 +37,42 @@ public class MonsterMonitorBox extends JPanel
         setBackground(new Color(60, 60, 60));
         setBorder(BorderFactory.createLineBorder(Color.GRAY));
 
-        // NPC name and kill count label
+        add(createNpcNameLabel(), BorderLayout.WEST);
+        add(createToggleButton(), BorderLayout.EAST);
+
+        // Create the options panel
+        optionsPanel = createOptionsPanel();
+        if (optionsVisible) {
+            add(optionsPanel, BorderLayout.SOUTH);
+        }
+
+        // Set the initial state of the checkbox and other UI elements
+        refreshUI();
+        updateOptionStateBasedOnIgnored();
+    }
+
+    /**
+     * Creates the NPC name label displaying the NPC's name and kill count.
+     *
+     * @return The JLabel for the NPC's name.
+     */
+    private JLabel createNpcNameLabel()
+    {
         JLabel npcNameLabel = new JLabel(npcData.getNpcName() + " x " + npcData.getTotalKillCount());
         npcNameLabel.setForeground(new Color(200, 200, 200));
         npcNameLabel.setFont(new Font("Arial", Font.BOLD, 12));
         npcNameLabel.setHorizontalAlignment(SwingConstants.LEFT);
         npcNameLabel.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
-        add(npcNameLabel, BorderLayout.WEST);
+        return npcNameLabel;
+    }
 
-        // Toggle button for the dropdown
+    /**
+     * Creates the toggle button for expanding or collapsing the options panel.
+     *
+     * @return The JButton used to toggle the dropdown visibility.
+     */
+    private JButton createToggleButton()
+    {
         toggleButton = new JButton(optionsVisible ? "▲" : "▼");
         toggleButton.setPreferredSize(new Dimension(16, 16));
         toggleButton.setBorder(BorderFactory.createEmptyBorder());
@@ -54,13 +81,7 @@ public class MonsterMonitorBox extends JPanel
         toggleButton.setForeground(new Color(200, 150, 0));
 
         toggleButton.addActionListener(e -> toggleOptionsVisibility());
-        add(toggleButton, BorderLayout.EAST);
-
-        // Create the options panel
-        optionsPanel = createOptionsPanel();
-        if (optionsVisible) {
-            add(optionsPanel, BorderLayout.SOUTH);
-        }
+        return toggleButton;
     }
 
     /**
@@ -71,20 +92,19 @@ public class MonsterMonitorBox extends JPanel
     {
         if (optionsVisible)
         {
-            remove(optionsPanel); // Remove the options panel if it's visible
-            toggleButton.setText("▼"); // Update button to indicate collapse
+            remove(optionsPanel);
+            toggleButton.setText("▼");
         }
         else
         {
-            add(optionsPanel, BorderLayout.SOUTH); // Add options below the NPC panel
-            toggleButton.setText("▲"); // Update button to indicate expansion
+            add(optionsPanel, BorderLayout.SOUTH);
+            toggleButton.setText("▲");
         }
 
         optionsVisible = !optionsVisible;
-
         revalidate();
-        getParent().revalidate(); // Revalidate the parent to correctly adjust the layout
-        getParent().repaint(); // Repaint parent to ensure correct display
+        getParent().revalidate();
+        getParent().repaint();
     }
 
     /**
@@ -95,64 +115,149 @@ public class MonsterMonitorBox extends JPanel
      */
     private JPanel createOptionsPanel()
     {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 0)); // Tighter layout with reduced margins
+        JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(new Color(60, 60, 60));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(2, 2, 2, 2);
 
-        // SET LIMIT Checkbox
-        setLimitCheckbox = new JCheckBox("Set Limit");
-        setLimitCheckbox.setForeground(Color.LIGHT_GRAY);
-        setLimitCheckbox.setBackground(new Color(60, 60, 60));
-        setLimitCheckbox.setFont(new Font("Arial", Font.BOLD, 12));
-        setLimitCheckbox.setSelected(npcData.isLimitSet());
-        setLimitCheckbox.addActionListener(e -> {
-            boolean isChecked = setLimitCheckbox.isSelected();
-            npcData.setLimitSet(isChecked);
-            limitSpinner.setEnabled(isChecked);
-            notifyCheckbox.setEnabled(isChecked);
+        setLimitCheckbox = createSetLimitCheckbox();
+        limitSpinner = createLimitSpinner();
+        notifyCheckbox = createNotifyCheckbox();
 
-            if (!isChecked) {
-                npcData.setKillLimit(0);
-                npcData.resetKillCountForLimit();
-                plugin.updateOverlay();
-            }
-            plugin.logger.updateNpcData(npcData);
-            updatePanelDirectly();
-        });
+        gbc.gridx = 0;
+        gbc.weightx = 0.1;
+        panel.add(setLimitCheckbox, gbc);
 
-        // JSpinner for Setting Kill Limit
-        limitSpinner = new JSpinner(new SpinnerNumberModel(npcData.getKillLimit(), 0, 999999, 1));
-        limitSpinner.setPreferredSize(new Dimension(65, 20));
-        limitSpinner.setEnabled(npcData.isLimitSet());
-        limitSpinner.setFont(new Font("Arial", Font.BOLD, 12));
-        limitSpinner.addChangeListener(e -> {
-            int limit = (Integer) limitSpinner.getValue();
-            npcData.setKillLimit(limit);
-            plugin.logger.updateNpcData(npcData);
-            plugin.updateOverlay();
-        });
+        gbc.gridx = 1;
+        gbc.weightx = 0.3;
+        panel.add(limitSpinner, gbc);
 
-        // NOTIFY Checkbox
-        notifyCheckbox = new JCheckBox("Notify");
-        notifyCheckbox.setForeground(Color.LIGHT_GRAY);
-        notifyCheckbox.setBackground(new Color(60, 60, 60));
-        notifyCheckbox.setFont(new Font("Arial", Font.BOLD, 12));
-        notifyCheckbox.setSelected(npcData.isNotifyOnLimit());
-        notifyCheckbox.setEnabled(npcData.isLimitSet());
-        notifyCheckbox.addActionListener(e -> {
-            npcData.setNotifyOnLimit(notifyCheckbox.isSelected());
-            plugin.logger.updateNpcData(npcData);
-        });
-
-        panel.add(setLimitCheckbox);
-        panel.add(limitSpinner);
-        panel.add(notifyCheckbox);
+        gbc.gridx = 2;
+        gbc.weightx = 0.1;
+        panel.add(notifyCheckbox, gbc);
 
         return panel;
     }
 
     /**
+     * Creates the checkbox to set a kill limit.
+     *
+     * @return A JCheckBox to enable or disable kill limit.
+     */
+    private JCheckBox createSetLimitCheckbox()
+    {
+        JCheckBox checkBox = new JCheckBox("Set Limit");
+        checkBox.setForeground(Color.LIGHT_GRAY);
+        checkBox.setBackground(new Color(60, 60, 60));
+        checkBox.setFont(new Font("SansSerif", Font.BOLD, 12));
+        checkBox.setSelected(npcData.isLimitSet());
+        checkBox.addActionListener(e -> handleSetLimitCheckbox());
+        return checkBox;
+    }
+
+    /**
+     * Creates the spinner to adjust the kill limit.
+     *
+     * @return A JSpinner for selecting the kill limit.
+     */
+    private JSpinner createLimitSpinner()
+    {
+        JSpinner spinner = new JSpinner(new SpinnerNumberModel(npcData.getKillLimit(), 0, 9999999, 1)) {
+            @Override
+            public Dimension getPreferredSize() {
+                return new Dimension(70, 20);
+            }
+
+            @Override
+            public Dimension getMaximumSize() {
+                return new Dimension(90, 20);
+            }
+        };
+        spinner.setEnabled(npcData.isLimitSet());
+        spinner.setFont(new Font("SansSerif", Font.BOLD, 12));
+        spinner.addChangeListener(e -> {
+            int limit = (Integer) spinner.getValue();
+            npcData.setKillLimit(limit);
+            plugin.logger.updateNpcData(npcData);
+            plugin.updateOverlay();
+        });
+        return spinner;
+    }
+
+    /**
+     * Creates the checkbox to enable notifications for reaching the kill limit.
+     *
+     * @return A JCheckBox to enable or disable notifications.
+     */
+    private JCheckBox createNotifyCheckbox()
+    {
+        JCheckBox checkBox = new JCheckBox("Notify");
+        checkBox.setForeground(Color.LIGHT_GRAY);
+        checkBox.setBackground(new Color(60, 60, 60));
+        checkBox.setFont(new Font("SansSerif", Font.BOLD, 12));
+        checkBox.setSelected(npcData.isNotifyOnLimit());
+        checkBox.setEnabled(npcData.isLimitSet());
+        checkBox.addActionListener(e -> {
+            npcData.setNotifyOnLimit(checkBox.isSelected());
+            plugin.logger.updateNpcData(npcData);
+        });
+        return checkBox;
+    }
+
+    /**
+     * Handles the action when the set limit checkbox is toggled.
+     */
+    private void handleSetLimitCheckbox()
+    {
+        boolean isChecked = setLimitCheckbox.isSelected();
+        npcData.setLimitSet(isChecked);
+        limitSpinner.setEnabled(isChecked);
+        notifyCheckbox.setEnabled(isChecked);
+
+        if (!isChecked) {
+            npcData.setKillLimit(0);
+            npcData.resetKillCountForLimit();
+            plugin.updateOverlay();
+        } else {
+            npcData.setKillLimit((Integer) limitSpinner.getValue());
+        }
+        plugin.logger.updateNpcData(npcData);
+        updatePanelDirectly();
+    }
+
+    /**
+     * Refreshes the UI elements based on the current state of the npcData.
+     */
+    private void refreshUI()
+    {
+        setLimitCheckbox.setSelected(npcData.isLimitSet());
+        limitSpinner.setEnabled(npcData.isLimitSet());
+        notifyCheckbox.setEnabled(npcData.isLimitSet());
+        revalidate();
+        repaint();
+    }
+
+    /**
+     * Disables or enables option controls based on whether the NPC is ignored.
+     */
+    private void updateOptionStateBasedOnIgnored()
+    {
+        boolean isIgnored = npcData.isIgnored();
+        setLimitCheckbox.setEnabled(!isIgnored);
+        limitSpinner.setEnabled(!isIgnored && npcData.isLimitSet());
+        notifyCheckbox.setEnabled(!isIgnored && npcData.isLimitSet());
+
+        setBackground(isIgnored ? new Color(50, 50, 50) : new Color(60, 60, 60));
+        toggleButton.setBackground(isIgnored ? new Color(50, 50, 50) : new Color(60, 60, 60));
+        toggleButton.setForeground(isIgnored ? Color.GRAY : new Color(200, 150, 0));
+
+        revalidate();
+        repaint();
+    }
+
+    /**
      * Updates the parent panel directly to reflect any changes made in this component.
-     * This ensures that the UI remains consistent and updated with the latest data.
      */
     private void updatePanelDirectly()
     {
@@ -191,7 +296,7 @@ public class MonsterMonitorBox extends JPanel
     {
         if (visible != optionsVisible)
         {
-            toggleOptionsVisibility(); // Ensure dropdown matches the desired state
+            toggleOptionsVisibility();
         }
     }
 }

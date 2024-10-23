@@ -60,6 +60,9 @@ public class MonsterMonitorPlugin extends Plugin
     @Inject
     DeathTracker deathTracker;
 
+    @Inject
+    MonsterMonitorMenuHandler menuHandler;
+
     private NavigationButton navButton;
     private boolean initialized = false;
 
@@ -69,9 +72,13 @@ public class MonsterMonitorPlugin extends Plugin
         return configManager.getConfig(MonsterMonitorConfig.class);
     }
 
+    /**
+     * Initializes the plugin, setting up UI components and registering events.
+     */
     @Override
     protected void startUp() throws Exception
     {
+        // Ensure the logger is initialized once the player is loaded.
         clientThread.invoke(() -> {
             if (client.getLocalPlayer() != null)
             {
@@ -79,6 +86,7 @@ public class MonsterMonitorPlugin extends Plugin
             }
         });
 
+        // Load the plugin icon and create a navigation button.
         final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/net/runelite/client/plugins/MonsterMonitor/icon.png");
         navButton = NavigationButton.builder()
                 .tooltip("Monster Monitor")
@@ -88,8 +96,11 @@ public class MonsterMonitorPlugin extends Plugin
         clientToolbar.addNavigation(navButton);
         updateOverlayVisibility();
 
+        // Register DeathTracker and menu handler for event handling.
         eventBus.register(deathTracker);
+        eventBus.register(menuHandler);
 
+        // Customize scroll bar appearance.
         SwingUtilities.invokeLater(() -> {
             Component parent = panel.getParent();
             while (parent != null && !(parent instanceof JScrollPane)) {
@@ -101,17 +112,22 @@ public class MonsterMonitorPlugin extends Plugin
                 scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(2, 0));
             }
         });
-
     }
 
+    /**
+     * Handles plugin shutdown, including saving logs and removing UI elements.
+     */
     @Override
     protected void shutDown() throws Exception
     {
         overlayManager.remove(overlay);
         clientToolbar.removeNavigation(navButton);
 
+        // Unregister DeathTracker and menu handler to stop event handling.
         eventBus.unregister(deathTracker);
+        eventBus.unregister(menuHandler);
 
+        // Save the current log state if the logger was initialized.
         if (logger != null && initialized)
         {
             logger.saveLog();
@@ -119,19 +135,29 @@ public class MonsterMonitorPlugin extends Plugin
         initialized = false;
     }
 
+    /**
+     * Handles the game tick event to initialize components if needed.
+     */
     @Subscribe
     public void onGameTick(GameTick event)
     {
+        // Initialize logger and UI elements if not yet initialized.
         if (!initialized && client.getLocalPlayer() != null)
         {
             logger.initialize();
             logger.loadLog();
             updateOverlay();
+            updateOverlayVisibility();
             panel.updatePanel();
             initialized = true;
         }
     }
 
+    /**
+     * Logs a death for a specific NPC and updates the UI accordingly.
+     *
+     * @param npcName The name of the NPC to log the death for.
+     */
     public void logDeath(String npcName)
     {
         if (initialized)
@@ -142,6 +168,9 @@ public class MonsterMonitorPlugin extends Plugin
         }
     }
 
+    /**
+     * Updates the UI elements, including the overlay and panel.
+     */
     public void updateUI()
     {
         if (initialized)
@@ -153,6 +182,11 @@ public class MonsterMonitorPlugin extends Plugin
         }
     }
 
+    /**
+     * Checks if a kill limit has been reached for a specific NPC and sends notifications.
+     *
+     * @param npcName The name of the NPC to check the kill limit for.
+     */
     private void checkKillLimit(String npcName)
     {
         if (!initialized)
@@ -169,14 +203,17 @@ public class MonsterMonitorPlugin extends Plugin
         int killLimit = npcData.getKillLimit();
         int killCountForLimit = npcData.getKillCountForLimit();
 
+        // If the kill limit is reached, notify the player.
         if (killLimit > 0 && killCountForLimit >= killLimit && npcData.isNotifyOnLimit())
         {
             if (config.notifyOnLimit())
             {
+                // Play a sound if enabled.
                 if (config.enableSoundAlerts())
                 {
                     Toolkit.getDefaultToolkit().beep();
                 }
+                // Display a chat message if enabled.
                 if (config.showChatNotifications())
                 {
                     String message = "<col=ff0000>" + config.customNotificationMessage().replace("{npc}", npcName) + "</col>";
@@ -186,38 +223,106 @@ public class MonsterMonitorPlugin extends Plugin
         }
     }
 
+    /**
+     * Retrieves the list of tracked NPCs.
+     *
+     * @return A list of tracked NPC data.
+     */
     public List<NpcData> getTrackedNpcs()
     {
         return logger.getNpcLog().values().stream().collect(Collectors.toList());
     }
 
-    public void updateOverlay()
-    {
-        overlay.updateOverlayData(getTrackedNpcs());
+    /**
+     * Updates the overlay with the current list of tracked NPCs.
+     * Only displays NPCs that have a set kill limit.
+     */
+    public void updateOverlay() {
+        List<NpcData> filteredNpcs = getTrackedNpcs().stream()
+                .filter(npcData -> npcData.isLimitSet() && !npcData.isIgnored())
+                .collect(Collectors.toList());
+
+        overlay.updateOverlayData(filteredNpcs);
     }
 
-    private void updateOverlayVisibility()
-    {
-        if (config.showOverlay())
-        {
+    /**
+     * Updates the visibility of the overlay based on user settings and tracked NPCs.
+     */
+    public void updateOverlayVisibility() {
+        // Check if there are any tracked NPCs with a set kill limit.
+        boolean hasKillLimitSet = logger.getNpcLog().values().stream()
+                .anyMatch(npcData -> npcData.isLimitSet() && !npcData.isIgnored());
+
+        // Only show the overlay if enabled in the config and at least one kill limit is set.
+        if (hasKillLimitSet && config.showOverlay()) {
             overlayManager.add(overlay);
-        }
-        else
-        {
+        } else {
             overlayManager.remove(overlay);
         }
-        updateOverlay();
+
+        updateOverlay(); // Refresh the overlay with the current data
     }
 
+    /**
+     * Sets the specified NPC to be monitored with a given kill limit.
+     * If the limit is zero, it is considered as having no limit.
+     *
+     * @param npcName The name of the NPC to monitor.
+     * @param killLimit The kill limit to set.
+     */
+    public void setNpcToMonitor(String npcName, int killLimit) {
+        NpcData npcData = logger.getNpcLog().computeIfAbsent(npcName, NpcData::new);
+
+        npcData.setKillLimit(killLimit);
+        npcData.setLimitSet(true); // Ensure the limit is set
+        npcData.setIgnored(false); // Ensure the NPC is not ignored
+        npcData.resetKillCountForLimit(); // Reset progress towards the limit if changed
+
+        // Update the logger with the new NPC data and refresh the UI.
+        logger.updateNpcData(npcData);
+        panel.updatePanel(); // Update the panel to reflect the checkbox state
+
+        // Force the UI elements to reflect the updated state
+        SwingUtilities.invokeLater(() -> panel.updatePanel());
+        updateOverlayVisibility();
+    }
+
+    /**
+     * Sets the specified NPC to be ignored, preventing it from being tracked.
+     *
+     * @param npcName The name of the NPC to ignore.
+     */
+    public void setNpcToIgnore(String npcName) {
+        NpcData npcData = logger.getNpcLog().computeIfAbsent(npcName, NpcData::new);
+
+        npcData.setIgnored(true);
+        npcData.setLimitSet(false);
+        npcData.setKillLimit(0);
+        npcData.resetKillCountForLimit();
+
+        // Update the logger with the new NPC data and refresh the UI.
+        logger.updateNpcData(npcData);
+        updateUI();
+        updateOverlayVisibility();
+    }
+
+    /**
+     * Handles changes in the plugin's configuration settings.
+     *
+     * @param event The configuration change event.
+     */
     @Subscribe
     public void onConfigChanged(ConfigChanged event)
     {
+        // Ensure the config change is related to the "monster monitor" plugin.
         if (!event.getGroup().equals("monster monitor")) {
             return;
         }
 
+        // Respond to specific configuration changes.
         switch (event.getKey()) {
             case "showOverlay":
+            case "showRightClickMenuEntries":
                 updateOverlayVisibility();
                 break;
             case "notifyOnLimit":

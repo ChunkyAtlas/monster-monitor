@@ -9,29 +9,25 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Represents the main panel of Monster Monitor.
  * This panel displays a list of NPCs that the player has been tracking, including their kill counts and
- * various options for managing the tracked data.
+ * various options for managing the tracked data, including ignore/monitor status.
  * The panel also includes a title, total kill count display, and scrollable list of NPCs.
  */
-public class MonsterMonitorPanel extends PluginPanel
-{
+public class MonsterMonitorPanel extends PluginPanel {
     private final MonsterMonitorPlugin plugin;
     private final JPanel npcListPanel;
+    private final JPanel ignoredNpcListPanel;
     private final JPanel fillerBox; // The filler box at the bottom
     private JLabel totalKillCountLabel;
     private final Map<NpcData, Boolean> dropdownStates = new HashMap<>(); // Stores the state of dropdowns
 
     @Inject
-    public MonsterMonitorPanel(MonsterMonitorPlugin plugin)
-    {
+    public MonsterMonitorPanel(MonsterMonitorPlugin plugin) {
         this.plugin = plugin;
 
         // Set layout using BorderLayout for the main panel
@@ -68,18 +64,21 @@ public class MonsterMonitorPanel extends PluginPanel
         titlePanel.add(totalKillCountLabel, BorderLayout.SOUTH); // Below the title
 
         // Add the title panel to the top of the main panel (fixed)
-        add(titlePanel, BorderLayout.NORTH); // Title panel remains fixed at the top
+        add(titlePanel, BorderLayout.NORTH);
 
-        // Initialize the NPC List Panel using GridBagLayout
+        // Initialize the NPC List Panels using GridBagLayout
         this.npcListPanel = new JPanel(new GridBagLayout());
-        this.npcListPanel.setBackground(backgroundColor); // Matching background color
+        this.npcListPanel.setBackground(backgroundColor);
+
+        this.ignoredNpcListPanel = new JPanel(new GridBagLayout());
+        this.ignoredNpcListPanel.setBackground(backgroundColor);
 
         // Create the scroll pane for the NPC list to enable scrolling
         JScrollPane scrollPane = new JScrollPane(npcListPanel);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(2, 0)); // Custom narrow scrollbar
-        scrollPane.getVerticalScrollBar().setUI(new CustomScrollBarUI(new Color(200, 150, 0))); // Custom scroll bar UI
+        scrollPane.getVerticalScrollBar().setUI(new CustomScrollBarUI(new Color(200, 150, 0)));
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
 
         // Add the scroll pane to the center of the main panel
@@ -93,7 +92,6 @@ public class MonsterMonitorPanel extends PluginPanel
 
     /**
      * Captures the current dropdown state for all NPC panels before refreshing.
-     * This method stores whether each dropdown in the NPC list is expanded or collapsed.
      */
     private void captureDropdownStates() {
         Component[] components = npcListPanel.getComponents();
@@ -108,7 +106,6 @@ public class MonsterMonitorPanel extends PluginPanel
 
     /**
      * Restores the dropdown states after the panel is refreshed.
-     * This method restores the expanded/collapsed state of each dropdown after a panel update.
      */
     private void restoreDropdownStates() {
         Component[] components = npcListPanel.getComponents();
@@ -116,101 +113,114 @@ public class MonsterMonitorPanel extends PluginPanel
             if (component instanceof MonsterMonitorBox) {
                 MonsterMonitorBox box = (MonsterMonitorBox) component;
                 NpcData npcData = box.getNpcData();
-                box.setDropdownVisible(dropdownStates.getOrDefault(npcData, false)); // Restore the dropdown state
+                box.setDropdownVisible(dropdownStates.getOrDefault(npcData, false));
             }
         }
     }
 
     /**
-     * Updates the panel by refreshing the list of tracked NPCs.
-     * This method repopulates the panel with NPCs and their current states, updates the kill counts, and restores dropdown visibility.
+     * Updates the panel by refreshing the list of tracked and ignored NPCs.
      */
-    public void updatePanel()
-    {
-        captureDropdownStates(); // Capture dropdown states before refreshing
+    public void updatePanel() {
+        SwingUtilities.invokeLater(() -> {
+            captureDropdownStates();
 
-        npcListPanel.removeAll(); // Clear the panel before adding updated NPC data
+            npcListPanel.removeAll();
+            ignoredNpcListPanel.removeAll();
 
-        // Get the list of tracked NPCs from the plugin
-        List<NpcData> trackedNpcs = new ArrayList<>(plugin.getTrackedNpcs());
+            List<NpcData> trackedNpcs = new ArrayList<>(plugin.getTrackedNpcs());
+            List<NpcData> ignoredNpcs = new ArrayList<>();
 
-        // Reverse the order of the list to display the most recent NPC first
-        Collections.reverse(trackedNpcs);
-
-        int totalKills = 0;
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.weightx = 1.0; // Ensure horizontal expansion
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(5, 0, 5, 0); // Add padding between NPC panels
-
-        // Populate the panel with NPC data
-        for (NpcData npcData : trackedNpcs)
-        {
-            MonsterMonitorBox npcPanel = new MonsterMonitorBox(plugin, npcData, dropdownStates.getOrDefault(npcData, false));
-
-            totalKills += npcData.getTotalKillCount(); // Sum the total kills for the label
-
-            npcListPanel.add(npcPanel, gbc); // Add NPC panel with GridBagLayout constraints
-
-            // Add right-click context menu
-            JPopupMenu contextMenu = createContextMenu(npcData);
-            npcPanel.setComponentPopupMenu(contextMenu);
-
-            // Add mouse listener to show context menu on right-click
-            npcPanel.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mousePressed(MouseEvent e) {
-                    if (e.isPopupTrigger()) {
-                        contextMenu.show(npcPanel, e.getX(), e.getY());
-                    }
+            // Separate tracked and ignored NPCs for different displays
+            for (NpcData npcData : trackedNpcs) {
+                if (npcData.isIgnored()) {
+                    ignoredNpcs.add(npcData);
                 }
+            }
 
-                @Override
-                public void mouseReleased(MouseEvent e) {
-                    if (e.isPopupTrigger()) {
-                        contextMenu.show(npcPanel, e.getX(), e.getY());
-                    }
+            Collections.reverse(trackedNpcs);
+            Collections.reverse(ignoredNpcs);
+
+            int totalKills = 0;
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.gridx = 0;
+            gbc.gridy = 0;
+            gbc.weightx = 1.0;
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+            gbc.insets = new Insets(5, 0, 5, 0);
+
+            // Add tracked NPCs
+            for (NpcData npcData : trackedNpcs) {
+                if (!npcData.isIgnored()) {
+                    MonsterMonitorBox npcPanel = new MonsterMonitorBox(plugin, npcData, dropdownStates.getOrDefault(npcData, false));
+                    totalKills += npcData.getTotalKillCount();
+                    npcListPanel.add(npcPanel, gbc);
+                    addContextMenuToNpcPanel(npcPanel, npcData);
+                    gbc.gridy++;
                 }
-            });
+            }
 
-            gbc.gridy++; // Increment grid position for the next NPC panel
-        }
+            // Add ignored NPCs section
+            if (!ignoredNpcs.isEmpty()) {
+                JLabel ignoredLabel = new JLabel("Ignored NPCs", SwingConstants.CENTER);
+                ignoredLabel.setForeground(new Color(180, 180, 180));
+                ignoredLabel.setFont(new Font("Arial", Font.BOLD, 12));
+                npcListPanel.add(ignoredLabel, gbc);
+                gbc.gridy++;
 
-        // Adjust filler box size and behavior based on the number of NPCs
-        adjustFillerBox(trackedNpcs.size());
+                for (NpcData npcData : ignoredNpcs) {
+                    MonsterMonitorBox npcPanel = new MonsterMonitorBox(plugin, npcData, dropdownStates.getOrDefault(npcData, false));
+                    npcPanel.setBackground(new Color(50, 50, 50)); // Solid grey background for ignored NPCs
+                    npcListPanel.add(npcPanel, gbc);
+                    addContextMenuToNpcPanel(npcPanel, npcData);
+                    gbc.gridy++;
+                }
+            }
 
-        // Add the filler box to the bottom
-        npcListPanel.add(fillerBox, gbc);
+            adjustFillerBox(trackedNpcs.size() + ignoredNpcs.size());
+            npcListPanel.add(fillerBox, gbc);
 
-        // Update the total kills label
-        totalKillCountLabel.setText("Total kills: " + totalKills);
+            totalKillCountLabel.setText("Total kills: " + totalKills);
 
-        npcListPanel.revalidate();
-        npcListPanel.repaint();
+            npcListPanel.revalidate();
+            npcListPanel.repaint();
 
-        restoreDropdownStates(); // Restore dropdown states after refreshing
+            restoreDropdownStates();
+        });
     }
 
     /**
-     * Adjusts the size and visibility of the filler box based on the number of NPCs in the list.
-     *
-     * @param npcCount The current number of NPCs in the panel.
+     * Adds a context menu to the given NPC panel.
      */
-    private void adjustFillerBox(int npcCount)
-    {
-        int minHeight = 100; // Minimum height for filler box
-        int maxHeight = 400; // Maximum height
+    private void addContextMenuToNpcPanel(MonsterMonitorBox npcPanel, NpcData npcData) {
+        JPopupMenu contextMenu = createContextMenu(npcData);
+        npcPanel.setComponentPopupMenu(contextMenu);
+        npcPanel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    contextMenu.show(npcPanel, e.getX(), e.getY());
+                }
+            }
 
-        if (npcCount > 15) // If there are too many NPCs, make filler box disappear
-        {
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    contextMenu.show(npcPanel, e.getX(), e.getY());
+                }
+            }
+        });
+    }
+
+    private void adjustFillerBox(int npcCount) {
+        int minHeight = 100;
+        int maxHeight = 400;
+
+        if (npcCount > 15) {
             fillerBox.setPreferredSize(new Dimension(0, 0));
-        }
-        else
-        {
-            int dynamicHeight = maxHeight - (npcCount * 15); // Shrink based on number of NPCs
-            dynamicHeight = Math.max(minHeight, dynamicHeight); // Ensure it doesn't get too small
+        } else {
+            int dynamicHeight = maxHeight - (npcCount * 15);
+            dynamicHeight = Math.max(minHeight, dynamicHeight);
             fillerBox.setPreferredSize(new Dimension(0, dynamicHeight));
         }
 
@@ -218,41 +228,82 @@ public class MonsterMonitorPanel extends PluginPanel
         fillerBox.repaint();
     }
 
-    /**
-     * Creates a context menu with options like Reset, Reset Kill Limit, Collapse All, and Expand All.
-     *
-     * @param npcData The NPC data associated with the context menu.
-     * @return The constructed JPopupMenu.
-     */
-    private JPopupMenu createContextMenu(NpcData npcData)
-    {
+    private JPopupMenu createContextMenu(NpcData npcData) {
         JPopupMenu contextMenu = new JPopupMenu();
 
-        JMenuItem resetMenuItem = new JMenuItem("Reset");
+        if (!npcData.isIgnored()) {
+            JMenuItem ignoreMenuItem = new JMenuItem("Ignore NPC");
+            ignoreMenuItem.addActionListener(ev -> {
+                npcData.setIgnored(true);
+                plugin.logger.updateNpcData(npcData);
+                plugin.updateOverlay();
+                updatePanel();
+            });
+            contextMenu.add(ignoreMenuItem);
+        }
+
+        JMenu monitorMenu = new JMenu("Monitor");
+        String[] presets = {"1", "10", "100", "1000"};
+        for (String preset : presets) {
+            JMenuItem presetItem = new JMenuItem(preset);
+            presetItem.addActionListener(ev -> {
+                npcData.setKillLimit(Integer.parseInt(preset));
+                npcData.setLimitSet(true); // Ensure the Set Limit checkbox is checked
+                npcData.setIgnored(false);
+                plugin.logger.updateNpcData(npcData);
+                plugin.updateOverlay();
+                updatePanel();
+            });
+            monitorMenu.add(presetItem);
+        }
+
+        // Add custom limit option
+        JMenuItem customMonitorItem = new JMenuItem("Custom...");
+        customMonitorItem.addActionListener(ev -> {
+            String input = JOptionPane.showInputDialog("Enter custom kill limit:");
+            try {
+                int customLimit = Integer.parseInt(input);
+                npcData.setKillLimit(customLimit);
+                npcData.setLimitSet(true); // Ensure the Set Limit checkbox is checked
+                npcData.setIgnored(false);
+                plugin.logger.updateNpcData(npcData);
+                plugin.updateOverlay();
+                updatePanel();
+            } catch (NumberFormatException ignored) {
+                // Handle invalid input silently
+            }
+        });
+        monitorMenu.add(customMonitorItem);
+        contextMenu.add(monitorMenu);
+
+        JMenuItem resetMenuItem = new JMenuItem("Reset NPC Data");
         resetMenuItem.addActionListener(ev -> {
-            plugin.logger.getNpcLog().remove(npcData.getNpcName()); // Remove the NPC from the log
-            plugin.logger.saveLog(); // Save the updated log
-            plugin.updateOverlay(); // Update the overlay
-            updatePanel(); // Refresh the panel
+            plugin.logger.getNpcLog().remove(npcData.getNpcName());
+            plugin.logger.saveLog();
+            plugin.updateOverlay();
+            updatePanel();
         });
 
         JMenuItem resetKillLimitMenuItem = new JMenuItem("Reset Kill Limit");
         resetKillLimitMenuItem.addActionListener(ev -> {
-            npcData.setKillLimit(0); // Reset the kill limit to zero
-            npcData.resetKillCountForLimit(); // Reset the kill count towards the limit
-            plugin.logger.updateNpcData(npcData); // Save the updated data
-            plugin.updateOverlay(); // Update the overlay
-            updatePanel(); // Refresh the panel
+            npcData.setKillLimit(0);
+            npcData.setLimitSet(false);
+            npcData.resetKillCountForLimit();
+            plugin.logger.updateNpcData(npcData);
+            plugin.updateOverlay();
+            updatePanel();
         });
 
+        contextMenu.add(resetMenuItem);
+        contextMenu.add(resetKillLimitMenuItem);
+
+        // Add Expand All and Collapse All
         JMenuItem collapseAllItem = new JMenuItem("Collapse All");
         collapseAllItem.addActionListener(this::collapseAllDropdowns);
 
         JMenuItem expandAllItem = new JMenuItem("Expand All");
         expandAllItem.addActionListener(this::expandAllDropdowns);
 
-        contextMenu.add(resetMenuItem);
-        contextMenu.add(resetKillLimitMenuItem);
         contextMenu.addSeparator();
         contextMenu.add(collapseAllItem);
         contextMenu.add(expandAllItem);
@@ -260,96 +311,54 @@ public class MonsterMonitorPanel extends PluginPanel
         return contextMenu;
     }
 
-    /**
-     * Collapses all NPC dropdowns by triggering the toggleOptionsVisibility method, simulating arrow clicks.
-     * This method is triggered by the 'Collapse All' context menu option.
-     *
-     * @param e The ActionEvent triggered by the collapse all action.
-     */
-    private void collapseAllDropdowns(ActionEvent e)
-    {
-        Component[] components = npcListPanel.getComponents();
-        for (Component component : components) {
+    private void collapseAllDropdowns(ActionEvent e) {
+        for (Component component : npcListPanel.getComponents()) {
             if (component instanceof MonsterMonitorBox) {
                 MonsterMonitorBox box = (MonsterMonitorBox) component;
-                if (box.isDropdownVisible()) {
-                    box.setDropdownVisible(false);  // Collapse if currently expanded
-                }
+                box.setDropdownVisible(false);
             }
         }
         npcListPanel.revalidate();
         npcListPanel.repaint();
     }
 
-    /**
-     * Expands all NPC dropdowns by triggering the toggleOptionsVisibility method, simulating arrow clicks.
-     * This method is triggered by the 'Expand All' context menu option.
-     *
-     * @param e The ActionEvent triggered by the expand all action.
-     */
-    private void expandAllDropdowns(ActionEvent e)
-    {
-        Component[] components = npcListPanel.getComponents();
-        for (Component component : components) {
+    private void expandAllDropdowns(ActionEvent e) {
+        for (Component component : npcListPanel.getComponents()) {
             if (component instanceof MonsterMonitorBox) {
                 MonsterMonitorBox box = (MonsterMonitorBox) component;
-                if (!box.isDropdownVisible()) {
-                    box.setDropdownVisible(true);  // Expand if currently collapsed
-                }
+                box.setDropdownVisible(true);
             }
         }
         npcListPanel.revalidate();
         npcListPanel.repaint();
     }
 
-    /**
-     * Custom UI class for the scroll bar used in the MonsterMonitorPanel.
-     * This class customizes the appearance of the scroll bar to match the plugin's theme.
-     */
-    public static class CustomScrollBarUI extends BasicScrollBarUI
-    {
+    public static class CustomScrollBarUI extends BasicScrollBarUI {
         private final Color arrowColor;
 
-        /**
-         * Constructs a CustomScrollBarUI with the specified arrow color.
-         *
-         * @param arrowColor The color of the arrows on the scrollbar.
-         */
-        public CustomScrollBarUI(Color arrowColor)
-        {
+        public CustomScrollBarUI(Color arrowColor) {
             this.arrowColor = arrowColor;
         }
 
         @Override
-        protected void configureScrollBarColors()
-        {
-            this.thumbColor = new Color(200, 150, 0); // Adjust scrollbar thumb color to orange
-            this.trackColor = new Color(30, 30, 30); // Darker gray for the scrollbar track
+        protected void configureScrollBarColors() {
+            this.thumbColor = new Color(200, 150, 0);
+            this.trackColor = new Color(30, 30, 30);
         }
 
         @Override
-        protected JButton createDecreaseButton(int orientation)
-        {
-            return createZeroButton(); // No arrow buttons for a clean look
+        protected JButton createDecreaseButton(int orientation) {
+            return createZeroButton();
         }
 
         @Override
-        protected JButton createIncreaseButton(int orientation)
-        {
-            return createZeroButton(); // No arrow buttons for a clean look
+        protected JButton createIncreaseButton(int orientation) {
+            return createZeroButton();
         }
 
-        /**
-         * Creates a zero-sized button to effectively hide the scroll bar buttons.
-         *
-         * @return A JButton with zero dimensions.
-         */
-        private JButton createZeroButton()
-        {
+        private JButton createZeroButton() {
             JButton button = new JButton();
-            button.setPreferredSize(new Dimension(0, 0)); // Effectively hides the buttons
-            button.setMinimumSize(new Dimension(0, 0));
-            button.setMaximumSize(new Dimension(0, 0));
+            button.setPreferredSize(new Dimension(0, 0));
             return button;
         }
     }
