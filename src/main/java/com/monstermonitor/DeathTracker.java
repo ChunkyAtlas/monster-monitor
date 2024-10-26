@@ -1,5 +1,8 @@
 package com.monstermonitor;
 
+
+import lombok.Getter;
+import lombok.Setter;
 import net.runelite.api.Client;
 import net.runelite.api.Hitsplat;
 import net.runelite.api.NPC;
@@ -116,6 +119,26 @@ public class DeathTracker {
             lastKnownNpcName.put(npcIndex, npcName);
             lastInteractionTicks.put(npcIndex, client.getTickCount());
             wasNpcEngaged.put(npcIndex, true);
+        }
+    }
+
+    @Subscribe
+    public void onActorDeath(ActorDeath event) {
+        Actor actor = event.getActor();
+
+        if (actor instanceof NPC) {
+            NPC npc = (NPC) actor;
+            int npcIndex = npc.getIndex();
+            int npcId = npc.getId();
+            String npcName = lastKnownNpcName.getOrDefault(npcIndex, "Unnamed NPC");
+
+            if (MULTI_PHASE_BOSS_IDS.contains(npcId) && MULTI_PHASE_FINAL_IDS.contains(npcId)) {
+                clientThread.invoke(() -> plugin.logDeath(npcName));
+                cleanupAfterLogging(npcIndex);
+            } else if (isInteractionValid(npcIndex)) {
+                clientThread.invoke(() -> plugin.logDeath(npcName));
+                cleanupAfterLogging(npcIndex);
+            }
         }
     }
 
