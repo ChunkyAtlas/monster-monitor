@@ -1,8 +1,5 @@
 package com.monstermonitor;
 
-
-import lombok.Getter;
-import lombok.Setter;
 import net.runelite.api.Client;
 import net.runelite.api.Hitsplat;
 import net.runelite.api.NPC;
@@ -13,6 +10,7 @@ import net.runelite.client.callback.ClientThread;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Tracks and manages NPC deaths and interactions for Monster Monitor.
@@ -72,12 +70,15 @@ public class DeathTracker {
             963, 965, // Giant Mole phases
             8360, 8361, 8362, // Zalcano phases
             4342, 4343, 4344, // Huey Helicopter NPC ID
-            8059, 8060 // Grotesque Guardians
+            8059, 8060, // Grotesque Guardians
+            9021, 9022, // Hunllef phases (Gauntlet)
+            9033, 9034, // Crystalline Dragon, Dark Beast (multi-phase)
+            8615, 8616, 8617 // Alchemical Hydra pre-final phases
     );
 
-    private final Map<Integer, String> lastKnownNpcName = new HashMap<>();
-    private final Map<Integer, Integer> lastInteractionTicks = new HashMap<>();
-    private final Map<Integer, Boolean> wasNpcEngaged = new HashMap<>();
+    private final Map<Integer, String> lastKnownNpcName = new ConcurrentHashMap<>();
+    private final Map<Integer, Integer> lastInteractionTicks = new ConcurrentHashMap<>();
+    private final Map<Integer, Boolean> wasNpcEngaged = new ConcurrentHashMap<>();
 
     private static final int INTERACTION_TIMEOUT_TICKS = 7;
 

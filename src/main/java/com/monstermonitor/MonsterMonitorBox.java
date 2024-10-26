@@ -88,23 +88,20 @@ public class MonsterMonitorBox extends JPanel
      * Toggles the visibility of the options panel (dropdown) in the NPC box.
      * Expands or collapses the options panel and updates the toggle button text.
      */
-    private void toggleOptionsVisibility()
-    {
-        if (optionsVisible)
-        {
-            remove(optionsPanel);
-            toggleButton.setText("▼");
-        }
-        else
-        {
-            add(optionsPanel, BorderLayout.SOUTH);
-            toggleButton.setText("▲");
-        }
-
-        optionsVisible = !optionsVisible;
-        revalidate();
-        getParent().revalidate();
-        getParent().repaint();
+    private void toggleOptionsVisibility() {
+        SwingUtilities.invokeLater(() -> {
+            if (optionsVisible) {
+                remove(optionsPanel);
+                toggleButton.setText("▼");
+            } else {
+                add(optionsPanel, BorderLayout.SOUTH);
+                toggleButton.setText("▲");
+            }
+            optionsVisible = !optionsVisible;
+            revalidate();
+            getParent().revalidate();
+            getParent().repaint();
+        });
     }
 
     /**
@@ -241,19 +238,20 @@ public class MonsterMonitorBox extends JPanel
     /**
      * Disables or enables option controls based on whether the NPC is ignored.
      */
-    private void updateOptionStateBasedOnIgnored()
-    {
-        boolean isIgnored = npcData.isIgnored();
-        setLimitCheckbox.setEnabled(!isIgnored);
-        limitSpinner.setEnabled(!isIgnored && npcData.isLimitSet());
-        notifyCheckbox.setEnabled(!isIgnored && npcData.isLimitSet());
+    private void updateOptionStateBasedOnIgnored() {
+        SwingUtilities.invokeLater(() -> {
+            boolean isIgnored = npcData.isIgnored();
+            setLimitCheckbox.setEnabled(!isIgnored);
+            limitSpinner.setEnabled(!isIgnored && npcData.isLimitSet());
+            notifyCheckbox.setEnabled(!isIgnored && npcData.isLimitSet());
 
-        setBackground(isIgnored ? new Color(50, 50, 50) : new Color(60, 60, 60));
-        toggleButton.setBackground(isIgnored ? new Color(50, 50, 50) : new Color(60, 60, 60));
-        toggleButton.setForeground(isIgnored ? Color.GRAY : new Color(200, 150, 0));
+            setBackground(isIgnored ? new Color(50, 50, 50) : new Color(60, 60, 60));
+            toggleButton.setBackground(isIgnored ? new Color(50, 50, 50) : new Color(60, 60, 60));
+            toggleButton.setForeground(isIgnored ? Color.GRAY : new Color(200, 150, 0));
 
-        revalidate();
-        repaint();
+            revalidate();
+            repaint();
+        });
     }
 
     /**

@@ -184,8 +184,8 @@ public class MonsterMonitorLogger {
      *
      * @return a map containing the NPC log data
      */
-    public Map<String, NpcData> getNpcLog() {
-        return npcLog;
+    public synchronized Map<String, NpcData> getNpcLog() {
+        return new LinkedHashMap<>(npcLog); // Return a copy to avoid exposing internal state
     }
 
     /**
@@ -194,9 +194,9 @@ public class MonsterMonitorLogger {
      *
      * @param npcData the updated data for the NPC
      */
-    public void updateNpcData(NpcData npcData) {
+    public synchronized void updateNpcData(NpcData npcData) {
         npcLog.put(npcData.getNpcName(), npcData);
-        saveLogAsync(); // Save the updated log asynchronously
-        plugin.updateOverlayVisibility(); // Update overlay visibility whenever NPC data changes
+        saveLogAsync();
+        plugin.updateOverlayVisibility();
     }
 }
