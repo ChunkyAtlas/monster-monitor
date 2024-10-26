@@ -66,7 +66,7 @@ public class DeathTracker {
     private static final Set<Integer> DESPAWN_EXCLUSION_IDS = Set.of(
             10530, // Tempoross
             6503, 6504, // Wintertodt
-            2042, 2043, 2044, // Zulrah phases
+            2042, 2043, // Zulrah phases
             963, 965, // Giant Mole phases
             8360, 8361, 8362, // Zalcano phases
             4342, 4343, 4344, // Huey Helicopter NPC ID
