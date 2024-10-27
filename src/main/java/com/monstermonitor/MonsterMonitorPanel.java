@@ -278,7 +278,7 @@ public class MonsterMonitorPanel extends PluginPanel {
 
         JMenuItem resetMenuItem = new JMenuItem("Reset NPC Data");
         resetMenuItem.addActionListener(ev -> {
-            plugin.logger.getNpcLog().remove(npcData.getNpcName());
+            plugin.logger.removeNpcFromLog(npcData.getNpcName());
             plugin.logger.saveLog();
             plugin.updateOverlay();
             updatePanel();

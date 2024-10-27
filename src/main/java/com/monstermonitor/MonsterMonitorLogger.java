@@ -189,6 +189,16 @@ public class MonsterMonitorLogger {
     }
 
     /**
+     * Removes an NPC from the log by name.
+     *
+     * @param npcName the name of the NPC to remove
+     * @return true if the NPC was removed, false if not found
+     */
+    public synchronized void removeNpcFromLog(String npcName) {
+        npcLog.remove(npcName);
+    }
+
+    /**
      * Updates the data for a specific NPC in the log and saves the log asynchronously.
      * If the NPC is ignored, it will not be tracked further.
      *
