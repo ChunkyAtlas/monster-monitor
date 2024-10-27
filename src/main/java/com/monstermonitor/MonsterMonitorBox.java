@@ -213,12 +213,15 @@ public class MonsterMonitorBox extends JPanel
         notifyCheckbox.setEnabled(isChecked);
 
         if (!isChecked) {
-            npcData.setKillLimit(0);
-            npcData.resetKillCountForLimit();
+            npcData.setKillLimit(0); // Clear the limit when unchecked
+            limitSpinner.setValue(0); // Reset the spinner to 0
+            notifyCheckbox.setSelected(false); // Uncheck notify
+            npcData.setNotifyOnLimit(false); // Update npcData to reflect unchecked state
             plugin.updateOverlay();
         } else {
             npcData.setKillLimit((Integer) limitSpinner.getValue());
         }
+
         plugin.logger.updateNpcData(npcData);
         updatePanelDirectly();
     }
