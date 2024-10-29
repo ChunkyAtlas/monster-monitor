@@ -11,6 +11,7 @@ import net.runelite.client.callback.ClientThread;
 import javax.inject.Inject;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -30,6 +31,26 @@ public class DeathTracker {
     private final Map<Integer, Boolean> wasNpcEngaged = new ConcurrentHashMap<>();
 
     private static final int INTERACTION_TIMEOUT_TICKS = 7;
+
+    private static final Map<String, Integer> FINAL_PHASE_IDS = Map.of(
+            "Kalphite Queen", 965,
+            "The Nightmare", 378,
+            "Phosani's Nightmare", 377,
+            "Alchemical Hydra", 8622,
+            "Hydra", 8609,
+            "Phantom Muspah", 12082,
+            "The Hueycoatl", 14013,
+            "Dusk", 7889,
+            "Abyssal Sire", 5891,
+            "Kephri", 11722
+    );
+
+    private static final Set<String> EXCLUDED_NPC_NAMES = Set.of(
+            "Hueycoatl Tail",
+            "Hueycoatl Tail Broken",
+            "Hueycoatl Body",
+            "Dawn"
+    );
 
     @Inject
     public DeathTracker(Client client, MonsterMonitorPlugin plugin, MonsterMonitorLogger logger, MonsterMonitorPanel panel, ClientThread clientThread) {
@@ -79,9 +100,23 @@ public class DeathTracker {
         if (actor instanceof NPC) {
             NPC npc = (NPC) actor;
             int npcIndex = npc.getIndex();
+            int npcId = npc.getId();
             String npcName = lastKnownNpcName.getOrDefault(npcIndex, "Unnamed NPC");
 
-            // Log death only if the player was recently engaged with the NPC
+            // Skip logging if the NPC is in the exclusion list
+            if (EXCLUDED_NPC_NAMES.contains(npcName)) {
+                return;
+            }
+
+            // Check if this NPC is a multi-phase boss with intermediate phases
+            if (FINAL_PHASE_IDS.containsKey(npcName)) {
+                // Only log if this is the final phase ID for the multi-phase boss
+                if (FINAL_PHASE_IDS.get(npcName) != npcId) {
+                    return; // Skip logging for intermediate phases
+                }
+            }
+
+            // Log death only if the player was recently engaged with the NPC and it's in the final phase or a regular NPC
             if (wasNpcEngaged.getOrDefault(npcIndex, false) && isInteractionValid(npcIndex)) {
                 clientThread.invoke(() -> plugin.logDeath(npcName));
                 cleanupAfterLogging(npcIndex);
