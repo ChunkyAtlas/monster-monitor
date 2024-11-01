@@ -6,9 +6,7 @@ import javax.inject.Inject;
 import javax.swing.*;
 import javax.swing.plaf.basic.BasicScrollBarUI;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 import java.util.*;
 import java.util.List;
 
@@ -66,23 +64,28 @@ public class MonsterMonitorPanel extends PluginPanel {
         // Add the title panel to the top of the main panel (fixed)
         add(titlePanel, BorderLayout.NORTH);
 
+
         // Initialize the NPC List Panels using GridBagLayout
         this.npcListPanel = new JPanel(new GridBagLayout());
         this.npcListPanel.setBackground(backgroundColor);
-
+        this.npcListPanel.setBorder(BorderFactory.createEmptyBorder());
         this.ignoredNpcListPanel = new JPanel(new GridBagLayout());
         this.ignoredNpcListPanel.setBackground(backgroundColor);
+        add(npcListPanel, BorderLayout.CENTER);
 
-        // Create the scroll pane for the NPC list to enable scrolling
-        JScrollPane scrollPane = new JScrollPane(npcListPanel);
-        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(2, 0)); // Custom narrow scrollbar
-        scrollPane.getVerticalScrollBar().setUI(new CustomScrollBarUI(new Color(200, 150, 0)));
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-
-        // Add the scroll pane to the center of the main panel
-        add(scrollPane, BorderLayout.CENTER);
+        // Customize scroll bar appearance
+        SwingUtilities.invokeLater(() -> {
+            Component parent = this.getParent();
+            while (parent != null && !(parent instanceof JScrollPane)) {
+                parent = parent.getParent();
+            }
+            if (parent instanceof JScrollPane) {
+                JScrollPane scrollPane = (JScrollPane) parent;
+                scrollPane.getVerticalScrollBar().setUI(new CustomScrollBarUI(new Color(200, 150, 0)));
+                scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(2, 0));
+                scrollPane.getVerticalScrollBar().setUnitIncrement(6);
+            }
+        });
 
         // Initialize the dynamic filler box that adjusts based on NPC count
         this.fillerBox = new JPanel();
@@ -181,7 +184,6 @@ public class MonsterMonitorPanel extends PluginPanel {
             npcListPanel.add(fillerBox, gbc);
 
             totalKillCountLabel.setText("Total kills: " + totalKills);
-
             npcListPanel.revalidate();
             npcListPanel.repaint();
 

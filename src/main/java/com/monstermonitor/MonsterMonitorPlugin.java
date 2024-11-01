@@ -99,19 +99,6 @@ public class MonsterMonitorPlugin extends Plugin
         // Register DeathTracker and menu handler for event handling.
         eventBus.register(deathTracker);
         eventBus.register(menuHandler);
-
-        // Customize scroll bar appearance.
-        SwingUtilities.invokeLater(() -> {
-            Component parent = panel.getParent();
-            while (parent != null && !(parent instanceof JScrollPane)) {
-                parent = parent.getParent();
-            }
-            if (parent instanceof JScrollPane) {
-                JScrollPane scrollPane = (JScrollPane) parent;
-                scrollPane.getVerticalScrollBar().setUI(new MonsterMonitorPanel.CustomScrollBarUI(new Color(200, 150, 0)));
-                scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(2, 0));
-            }
-        });
     }
 
     /**

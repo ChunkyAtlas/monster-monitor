@@ -147,7 +147,7 @@ public class MonsterMonitorBox extends JPanel
         JCheckBox checkBox = new JCheckBox("Set Limit");
         checkBox.setForeground(Color.LIGHT_GRAY);
         checkBox.setBackground(new Color(60, 60, 60));
-        checkBox.setFont(new Font("SansSerif", Font.BOLD, 12));
+        checkBox.setFont(new Font("SansSerif", Font.BOLD, 11));
         checkBox.setSelected(npcData.isLimitSet());
         checkBox.addActionListener(e -> handleSetLimitCheckbox());
         return checkBox;
@@ -172,7 +172,7 @@ public class MonsterMonitorBox extends JPanel
             }
         };
         spinner.setEnabled(npcData.isLimitSet());
-        spinner.setFont(new Font("SansSerif", Font.BOLD, 12));
+        spinner.setFont(new Font("SansSerif", Font.BOLD, 11));
         spinner.addChangeListener(e -> {
             int limit = (Integer) spinner.getValue();
             npcData.setKillLimit(limit);
@@ -192,7 +192,7 @@ public class MonsterMonitorBox extends JPanel
         JCheckBox checkBox = new JCheckBox("Notify");
         checkBox.setForeground(Color.LIGHT_GRAY);
         checkBox.setBackground(new Color(60, 60, 60));
-        checkBox.setFont(new Font("SansSerif", Font.BOLD, 12));
+        checkBox.setFont(new Font("SansSerif", Font.BOLD, 11));
         checkBox.setSelected(npcData.isNotifyOnLimit());
         checkBox.setEnabled(npcData.isLimitSet());
         checkBox.addActionListener(e -> {

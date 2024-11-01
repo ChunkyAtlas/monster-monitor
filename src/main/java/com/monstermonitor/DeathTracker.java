@@ -32,17 +32,18 @@ public class DeathTracker {
 
     private static final int INTERACTION_TIMEOUT_TICKS = 7;
 
-    private static final Map<String, Integer> FINAL_PHASE_IDS = Map.of(
-            "Kalphite Queen", 965,
-            "The Nightmare", 378,
-            "Phosani's Nightmare", 377,
-            "Alchemical Hydra", 8622,
-            "Hydra", 8609,
-            "Phantom Muspah", 12082,
-            "The Hueycoatl", 14013,
-            "Dusk", 7889,
-            "Abyssal Sire", 5891,
-            "Kephri", 11722
+    private static final Map<String, Set<Integer>> FINAL_PHASE_IDS = Map.ofEntries(
+            Map.entry("Kalphite Queen", Set.of(965)),
+            Map.entry("The Nightmare", Set.of(378)),
+            Map.entry("Phosani's Nightmare", Set.of(377)),
+            Map.entry("Alchemical Hydra", Set.of(8622)),
+            Map.entry("Hydra", Set.of(8609)),
+            Map.entry("Phantom Muspah", Set.of(12082)),
+            Map.entry("The Hueycoatl", Set.of(14013)),
+            Map.entry("Dusk", Set.of(7889)),
+            Map.entry("Abyssal Sire", Set.of(5891)),
+            Map.entry("Kephri", Set.of(11722)),
+            Map.entry("Verzik Vitur", Set.of(10832, 8371, 10849))
     );
 
     private static final Set<String> EXCLUDED_NPC_NAMES = Set.of(
@@ -110,8 +111,9 @@ public class DeathTracker {
 
             // Check if this NPC is a multi-phase boss with intermediate phases
             if (FINAL_PHASE_IDS.containsKey(npcName)) {
-                // Only log if this is the final phase ID for the multi-phase boss
-                if (FINAL_PHASE_IDS.get(npcName) != npcId) {
+                Set<Integer> finalIds = FINAL_PHASE_IDS.get(npcName);
+                // Only log if the NPC ID is one of the final phase IDs for this multi-phase boss
+                if (!finalIds.contains(npcId)) {
                     return; // Skip logging for intermediate phases
                 }
             }
