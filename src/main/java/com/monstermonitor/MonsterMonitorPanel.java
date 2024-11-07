@@ -278,7 +278,7 @@ public class MonsterMonitorPanel extends PluginPanel {
         monitorMenu.add(customMonitorItem);
         contextMenu.add(monitorMenu);
 
-        JMenuItem resetMenuItem = new JMenuItem("Reset NPC Data");
+        JMenuItem resetMenuItem = new JMenuItem("Clear NPC Data");
         resetMenuItem.addActionListener(ev -> {
             plugin.logger.removeNpcFromLog(npcData.getNpcName());
             plugin.logger.saveLog();
@@ -299,6 +299,11 @@ public class MonsterMonitorPanel extends PluginPanel {
         contextMenu.add(resetMenuItem);
         contextMenu.add(resetKillLimitMenuItem);
 
+        // "Edit NPC Data" option to edit NPC Data from log
+        JMenuItem editNpcDataMenuItem = new JMenuItem("Edit NPC Data");
+        editNpcDataMenuItem.addActionListener(ev -> showEditNpcDataDialog(npcData));
+        contextMenu.add(editNpcDataMenuItem);
+
         // Add Expand All and Collapse All
         JMenuItem collapseAllItem = new JMenuItem("Collapse All");
         collapseAllItem.addActionListener(this::collapseAllDropdowns);
@@ -311,6 +316,48 @@ public class MonsterMonitorPanel extends PluginPanel {
         contextMenu.add(expandAllItem);
 
         return contextMenu;
+    }
+
+    private void showEditNpcDataDialog(NpcData npcData) {
+        JPanel panel = new JPanel(new GridLayout(4, 2));
+
+        // Create input fields with current values prefilled
+        JLabel npcNameField = new JLabel(String.valueOf(npcData.getNpcName()));
+        JTextField totalKillsField = new JTextField(String.valueOf(npcData.getTotalKillCount()));
+        JTextField killLimitField = new JTextField(String.valueOf(npcData.getKillLimit()));
+        JTextField killsForLimitField = new JTextField(String.valueOf(npcData.getKillCountForLimit()));
+
+        // Add labels and fields to the panel
+        panel.add(new JLabel(getName()));
+        panel.add(npcNameField);
+        panel.add(new JLabel("Total Kills:"));
+        panel.add(totalKillsField);
+        panel.add(new JLabel("Kill Limit:"));
+        panel.add(killLimitField);
+        panel.add(new JLabel("Kills For Limit:"));
+        panel.add(killsForLimitField);
+
+        int result = JOptionPane.showConfirmDialog(null, panel, "Edit NPC Data", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+        if (result == JOptionPane.OK_OPTION) {
+            try {
+                // Parse and set new values if valid
+                int totalKills = Integer.parseInt(totalKillsField.getText());
+                int killLimit = Integer.parseInt(killLimitField.getText());
+                int killsForLimit = Integer.parseInt(killsForLimitField.getText());
+
+                npcData.setTotalKillCount(totalKills);
+                npcData.setKillLimit(killLimit);
+                npcData.setKillCountForLimit(killsForLimit);
+
+                plugin.logger.updateNpcData(npcData);
+                plugin.updateOverlay();
+                updatePanel();  // Refresh the panel to show updated values
+
+            } catch (NumberFormatException e) {
+                JOptionPane.showMessageDialog(null, "Please enter valid numbers.", "Invalid Input", JOptionPane.ERROR_MESSAGE);
+            }
+        }
     }
 
     private void collapseAllDropdowns(ActionEvent e) {

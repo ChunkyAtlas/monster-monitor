@@ -50,7 +50,8 @@ public class DeathTracker {
             "Hueycoatl Tail",
             "Hueycoatl Tail Broken",
             "Hueycoatl Body",
-            "Dawn"
+            "Dawn",
+            "Cracked Ice"
     );
 
     @Inject

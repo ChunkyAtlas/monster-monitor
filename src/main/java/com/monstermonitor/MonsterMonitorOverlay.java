@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
  */
 public class MonsterMonitorOverlay extends Overlay
 {
+    private static final int NAME_CHARACTER_LIMIT = 16;  // Define a character limit for truncation
     private List<NpcData> trackedNpcs; // List of NPCs being tracked for the overlay
 
     @Getter
@@ -131,14 +132,11 @@ public class MonsterMonitorOverlay extends Overlay
 
                 // Set the font for the NPC name and progress text
                 graphics.setFont(new Font("Arial", Font.BOLD, 11));
-                // Calculate the vertical center for the text inside the progress bar with a positive adjustment
                 FontMetrics metrics = graphics.getFontMetrics();
                 int textY = yOffset + ((barHeight + metrics.getAscent() - metrics.getDescent()) / 2) + 1;
 
-
-
-                // Draw the NPC name on the left
-                String npcName = npcData.getNpcName();
+                // Draw the truncated NPC name on the left
+                String npcName = truncateName(npcData.getNpcName());
                 graphics.setColor(Color.BLACK);
                 graphics.drawString(npcName, 9, textY + 1); // Shadow
                 graphics.setColor(Color.LIGHT_GRAY);
@@ -162,7 +160,19 @@ public class MonsterMonitorOverlay extends Overlay
         return panelComponent.render(graphics);
     }
 
-
+    /**
+     * Truncates the NPC name if it exceeds the specified character limit, appending an ellipsis if truncated.
+     *
+     * @param name The original NPC name.
+     * @return A truncated name with ellipsis if it exceeds the limit, or the original name otherwise.
+     */
+    private String truncateName(String name)
+    {
+        if (name.length() <= NAME_CHARACTER_LIMIT) {
+            return name;
+        }
+        return name.substring(0, NAME_CHARACTER_LIMIT - 3) + "...";
+    }
 
     /**
      * Formats the given number to a more readable string, such as 1k for 1000, without rounding up.
