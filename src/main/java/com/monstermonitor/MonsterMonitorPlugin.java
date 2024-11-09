@@ -309,6 +309,7 @@ public class MonsterMonitorPlugin extends Plugin
         // Respond to specific configuration changes.
         switch (event.getKey()) {
             case "showOverlay":
+            case "showTitle":
             case "showRightClickMenuEntries":
                 updateOverlayVisibility();
                 break;

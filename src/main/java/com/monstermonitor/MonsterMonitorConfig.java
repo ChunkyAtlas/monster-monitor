@@ -95,4 +95,13 @@ public interface MonsterMonitorConfig extends Config {
     default boolean showRightClickMenuEntries() {
         return true; // Default to showing right-click menu entries
     }
+
+    @ConfigItem(
+            keyName = "showTitle",
+            name = "Show Overlay Title",
+            description = "Toggle the display of the overlay title"
+    )
+    default boolean showTitle() {
+        return true;
+    }
 }
