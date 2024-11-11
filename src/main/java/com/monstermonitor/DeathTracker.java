@@ -43,15 +43,20 @@ public class DeathTracker {
             Map.entry("Dusk", Set.of(7889)),
             Map.entry("Abyssal Sire", Set.of(5891)),
             Map.entry("Kephri", Set.of(11722)),
-            Map.entry("Verzik Vitur", Set.of(10832, 8371, 10849))
+            Map.entry("Verzik Vitur", Set.of(10832, 8371, 10849)),
+            Map.entry("Great Olm", Set.of(7551))
     );
 
-    private static final Set<String> EXCLUDED_NPC_NAMES = Set.of(
-            "Hueycoatl Tail",
-            "Hueycoatl Tail Broken",
-            "Hueycoatl Body",
-            "Dawn",
-            "Cracked Ice"
+    private static final Map<String, Set<Integer>> EXCLUDED_NPC_IDS = Map.ofEntries(
+            Map.entry("The Hueycoatl", Set.of(14009, 14010, 14011, 14012)),
+            Map.entry("Hueycoatl Tail", Set.of(14014)),
+            Map.entry("Hueycoatl Tail Broken", Set.of(14015)),
+            Map.entry("Hueycoatl Body", Set.of(14017)),
+            Map.entry("Dawn", Set.of(7888)),
+            Map.entry("Cracked Ice", Set.of(13026)),
+            Map.entry("Great Olm Right Claw", Set.of(7550, 7553)),
+            Map.entry("Great Olm Left Claw", Set.of(7552, 7555))
+
     );
 
     @Inject
@@ -106,7 +111,7 @@ public class DeathTracker {
             String npcName = lastKnownNpcName.getOrDefault(npcIndex, "Unnamed NPC");
 
             // Skip logging if the NPC is in the exclusion list
-            if (EXCLUDED_NPC_NAMES.contains(npcName)) {
+            if (EXCLUDED_NPC_IDS.containsKey(npcName) && EXCLUDED_NPC_IDS.get(npcName).contains(npcId)) {
                 return;
             }
 

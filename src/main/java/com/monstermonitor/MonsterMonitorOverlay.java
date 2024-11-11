@@ -142,7 +142,9 @@ public class MonsterMonitorOverlay extends Overlay {
 
         // Calculate progress percentage and cap it at 100%
         double progressPercentage = Math.min(killsTowardLimit / (double) limit, 1.0);
-        Color barColor = getBarColor(progressPercentage);
+
+        // Interpolate color from red (0%) to orange (50%) to green (100%)
+        Color barColor = interpolateColor(progressPercentage);
 
         int barWidth = overlayWidth - 10;
         int startX = (overlayWidth - barWidth) / 2;
@@ -164,17 +166,42 @@ public class MonsterMonitorOverlay extends Overlay {
         drawText(graphics, npcData, killsTowardLimit, limit, overlayWidth, startX, yOffset, barHeight, barWidth);
     }
 
+
     /**
-     * Determines the color of the progress bar based on the progress percentage.
+     * Interpolates between three colors (Dark Red -> Dark Orange -> Dark Green) based on the specified ratio.
      *
-     * @param progressPercentage The progress percentage of the kill count toward the limit.
-     * @return A color representing the progress stage.
+     * @param ratio The progress ratio (0.0 to 1.0).
+     * @return The interpolated color.
      */
-    private Color getBarColor(double progressPercentage) {
-        if (progressPercentage >= 0.75) return Color.GREEN.darker();
-        if (progressPercentage >= 0.5) return Color.ORANGE.darker();
-        return Color.RED.darker();
+    private Color interpolateColor(double ratio) {
+        // Define darker shades of red, orange, and green
+        Color darkRed = new Color(139, 0, 0);      // Dark red
+        Color darkOrange = new Color(204, 102, 0);  // Dark orange
+        Color darkGreen = new Color(0, 128, 0);     // Dark green
+
+        Color startColor;
+        Color endColor;
+        double adjustedRatio;
+
+        if (ratio <= 0.5) {
+            // Interpolate between Dark Red (0%) and Dark Orange (50%)
+            startColor = darkRed;
+            endColor = darkOrange;
+            adjustedRatio = ratio * 2; // Scale to 0 - 1 within the first half
+        } else {
+            // Interpolate between Dark Orange (50%) and Dark Green (100%)
+            startColor = darkOrange;
+            endColor = darkGreen;
+            adjustedRatio = (ratio - 0.5) * 2; // Scale to 0 - 1 within the second half
+        }
+
+        int red = (int) (startColor.getRed() * (1 - adjustedRatio) + endColor.getRed() * adjustedRatio);
+        int green = (int) (startColor.getGreen() * (1 - adjustedRatio) + endColor.getGreen() * adjustedRatio);
+
+        // Set blue to 0 for all colors in this gradient
+        return new Color(red, green, 0);
     }
+
 
     /**
      * Draws the NPC name and progress count on top of the progress bar.

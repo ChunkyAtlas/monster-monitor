@@ -18,62 +18,61 @@ import java.util.List;
  */
 public class MonsterMonitorPanel extends PluginPanel {
     private final MonsterMonitorPlugin plugin;
+    private final MonsterMonitorSearchBar searchBar;
     private final JPanel npcListPanel;
     private final JPanel ignoredNpcListPanel;
     private final JPanel fillerBox; // The filler box at the bottom
     private JLabel totalKillCountLabel;
     private final Map<NpcData, Boolean> dropdownStates = new HashMap<>(); // Stores the state of dropdowns
+    private String searchText = "";
 
     @Inject
     public MonsterMonitorPanel(MonsterMonitorPlugin plugin) {
         this.plugin = plugin;
 
-        // Set layout using BorderLayout for the main panel
         setLayout(new BorderLayout());
-
-        // Define colors for the UI components
-        Color backgroundColor = new Color(45, 45, 45); // Unified background color
-        Color textColor = new Color(200, 200, 200); // Light gray color for text
-
-        // Set the panel's background color
+        Color backgroundColor = new Color(45, 45, 45);
+        Color textColor = new Color(200, 200, 200);
         setBackground(backgroundColor);
 
-        // Initialize and configure the panel title
+        // Title Panel setup
         JPanel titlePanel = new JPanel(new BorderLayout());
         titlePanel.setBackground(backgroundColor);
 
-        // Title label, now centered in the middle of the panel
         JLabel titleLabel = new JLabel("Monster Monitor", SwingConstants.CENTER);
         titleLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        titleLabel.setForeground(new Color(200, 150, 0)); // Orange color for the title text
+        titleLabel.setForeground(new Color(200, 150, 0));
         titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
         ImageIcon icon = new ImageIcon(getClass().getResource("/net/runelite/client/plugins/MonsterMonitor/icon.png"));
         titleLabel.setIcon(icon);
 
-        // Initialize and configure the total kill count label
         totalKillCountLabel = new JLabel("Total kills: 0");
-        totalKillCountLabel.setFont(new Font("Arial", Font.BOLD, 12)); // Bold text
-        totalKillCountLabel.setForeground(textColor); // Light gray for the total kills text
+        totalKillCountLabel.setFont(new Font("Arial", Font.BOLD, 12));
+        totalKillCountLabel.setForeground(textColor);
         totalKillCountLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
-        // Add the title and total kill count to the title panel
-        titlePanel.add(titleLabel, BorderLayout.NORTH); // Place title at the top
-        titlePanel.add(totalKillCountLabel, BorderLayout.SOUTH); // Below the title
+        titlePanel.add(titleLabel, BorderLayout.NORTH);
+        titlePanel.add(totalKillCountLabel, BorderLayout.SOUTH);
 
-        // Add the title panel to the top of the main panel (fixed)
+        // Add the title panel at the top
         add(titlePanel, BorderLayout.NORTH);
 
+        // Initialize the search bar and add it below the title panel
+        searchBar = new MonsterMonitorSearchBar(searchText -> {
+            this.searchText = searchText.toLowerCase();
+            updatePanel();
+        });
+        add(searchBar, BorderLayout.CENTER);
 
-        // Initialize the NPC List Panels using GridBagLayout
+        // NPC List Panels setup
         this.npcListPanel = new JPanel(new GridBagLayout());
         this.npcListPanel.setBackground(backgroundColor);
         this.npcListPanel.setBorder(BorderFactory.createEmptyBorder());
         this.ignoredNpcListPanel = new JPanel(new GridBagLayout());
         this.ignoredNpcListPanel.setBackground(backgroundColor);
-        add(npcListPanel, BorderLayout.CENTER);
+        add(npcListPanel, BorderLayout.SOUTH);
 
-        // Customize scroll bar appearance
         SwingUtilities.invokeLater(() -> {
             Component parent = this.getParent();
             while (parent != null && !(parent instanceof JScrollPane)) {
@@ -87,7 +86,6 @@ public class MonsterMonitorPanel extends PluginPanel {
             }
         });
 
-        // Initialize the dynamic filler box that adjusts based on NPC count
         this.fillerBox = new JPanel();
         fillerBox.setBackground(backgroundColor); // Same background as the panel (invisible)
         fillerBox.setPreferredSize(new Dimension(0, 200)); // Initial height is large
@@ -134,12 +132,15 @@ public class MonsterMonitorPanel extends PluginPanel {
             List<NpcData> trackedNpcs = new ArrayList<>(plugin.getTrackedNpcs());
             List<NpcData> ignoredNpcs = new ArrayList<>();
 
-            // Separate tracked and ignored NPCs for different displays
             for (NpcData npcData : trackedNpcs) {
                 if (npcData.isIgnored()) {
                     ignoredNpcs.add(npcData);
                 }
             }
+
+            // Apply search filter to both tracked and ignored NPCs
+            trackedNpcs.removeIf(npcData -> !npcData.getNpcName().toLowerCase().contains(searchText));
+            ignoredNpcs.removeIf(npcData -> !npcData.getNpcName().toLowerCase().contains(searchText));
 
             Collections.reverse(trackedNpcs);
             Collections.reverse(ignoredNpcs);
@@ -152,7 +153,6 @@ public class MonsterMonitorPanel extends PluginPanel {
             gbc.fill = GridBagConstraints.HORIZONTAL;
             gbc.insets = new Insets(5, 0, 5, 0);
 
-            // Add tracked NPCs
             for (NpcData npcData : trackedNpcs) {
                 if (!npcData.isIgnored()) {
                     MonsterMonitorBox npcPanel = new MonsterMonitorBox(plugin, npcData, dropdownStates.getOrDefault(npcData, false));
@@ -163,7 +163,6 @@ public class MonsterMonitorPanel extends PluginPanel {
                 }
             }
 
-            // Add ignored NPCs section
             if (!ignoredNpcs.isEmpty()) {
                 JLabel ignoredLabel = new JLabel("Ignored NPCs", SwingConstants.CENTER);
                 ignoredLabel.setForeground(new Color(180, 180, 180));
@@ -173,7 +172,7 @@ public class MonsterMonitorPanel extends PluginPanel {
 
                 for (NpcData npcData : ignoredNpcs) {
                     MonsterMonitorBox npcPanel = new MonsterMonitorBox(plugin, npcData, dropdownStates.getOrDefault(npcData, false));
-                    npcPanel.setBackground(new Color(50, 50, 50)); // Solid grey background for ignored NPCs
+                    npcPanel.setBackground(new Color(50, 50, 50));
                     npcListPanel.add(npcPanel, gbc);
                     addContextMenuToNpcPanel(npcPanel, npcData);
                     gbc.gridy++;

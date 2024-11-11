@@ -133,9 +133,11 @@ public class MonsterMonitorPlugin extends Plugin
         {
             logger.initialize();
             logger.loadLog();
-            updateOverlay();
-            updateOverlayVisibility();
-            panel.updatePanel();
+            SwingUtilities.invokeLater(() -> {
+                updateOverlay();
+                updateOverlayVisibility();
+                panel.updatePanel();
+            });
             initialized = true;
         }
     }
@@ -162,7 +164,7 @@ public class MonsterMonitorPlugin extends Plugin
     {
         if (initialized)
         {
-            clientThread.invoke(() -> {
+            SwingUtilities.invokeLater(() -> {
                 updateOverlay();
                 panel.updatePanel();
             });
@@ -246,8 +248,6 @@ public class MonsterMonitorPlugin extends Plugin
         } else {
             overlayManager.remove(overlay);
         }
-
-        updateOverlay(); // Refresh the overlay with the current data
     }
 
     /**
@@ -267,10 +267,7 @@ public class MonsterMonitorPlugin extends Plugin
 
         // Update the logger with the new NPC data and refresh the UI.
         logger.updateNpcData(npcData);
-        panel.updatePanel(); // Update the panel to reflect the checkbox state
-
-        // Force the UI elements to reflect the updated state
-        SwingUtilities.invokeLater(() -> panel.updatePanel());
+        SwingUtilities.invokeLater(() -> panel.updatePanel()); // Update the panel to reflect the checkbox state
         updateOverlayVisibility();
     }
 
