@@ -1,18 +1,20 @@
 package com.monstermonitor;
 
-import net.runelite.api.Client;
-import net.runelite.api.Hitsplat;
-import net.runelite.api.NPC;
-import net.runelite.api.Actor;
-import net.runelite.api.events.*;
-import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.callback.ClientThread;
-
-import javax.inject.Inject;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import javax.inject.Inject;
+import net.runelite.api.Actor;
+import net.runelite.api.Client;
+import net.runelite.api.Hitsplat;
+import net.runelite.api.NPC;
+import net.runelite.api.events.ActorDeath;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.HitsplatApplied;
+import net.runelite.api.events.InteractingChanged;
+import net.runelite.client.callback.ClientThread;
+import net.runelite.client.eventbus.Subscribe;
 
 /**
  * Tracks and manages NPC deaths and interactions for Monster Monitor.
@@ -44,7 +46,8 @@ public class DeathTracker {
             Map.entry("Abyssal Sire", Set.of(5891)),
             Map.entry("Kephri", Set.of(11722)),
             Map.entry("Verzik Vitur", Set.of(10832, 8371, 10849)),
-            Map.entry("Great Olm", Set.of(7551))
+            Map.entry("Great Olm", Set.of(7551)),
+			Map.entry("Amoxliatl", Set.of(13685))
     );
 
     private static final Map<String, Set<Integer>> EXCLUDED_NPC_IDS = Map.ofEntries(
@@ -53,6 +56,7 @@ public class DeathTracker {
             Map.entry("Hueycoatl Tail Broken", Set.of(14015)),
             Map.entry("Hueycoatl Body", Set.of(14017)),
             Map.entry("Dawn", Set.of(7888)),
+			Map.entry("Unstable Ice", Set.of(13688)),
             Map.entry("Cracked Ice", Set.of(13026)),
             Map.entry("Great Olm Right Claw", Set.of(7550, 7553)),
             Map.entry("Great Olm Left Claw", Set.of(7552, 7555))
