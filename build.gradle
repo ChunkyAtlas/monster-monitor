@@ -30,7 +30,7 @@ dependencies {
 }
 
 group = 'com.monstermonitor'
-version = '1.4.1'
+version = '1.4.2'
 
 tasks.withType(JavaCompile) {
 	options.encoding = 'UTF-8'

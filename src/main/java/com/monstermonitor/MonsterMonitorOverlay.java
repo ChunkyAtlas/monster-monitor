@@ -81,26 +81,31 @@ public class MonsterMonitorOverlay extends Overlay {
      */
     @Override
     public Dimension render(Graphics2D graphics) {
+        Dimension preferredSize = getPreferredSize();
+        int overlayWidth = (preferredSize != null && preferredSize.width > 0) ? preferredSize.width : 160;
         panelComponent.getChildren().clear(); // Clear previous overlay components
 
-        List<NpcData> currentNpcs = trackedNpcs.get(); // Get the current NPC list atomically
-
+        List<NpcData> currentNpcs = trackedNpcs.get();
         if (currentNpcs == null || currentNpcs.isEmpty()) {
-            return null; // Return early if there are no tracked NPCs to display
+            return null;
         }
 
-        int overlayWidth = 160;
         int yOffset = 0;
         int totalHeight = 0;
 
-        // Check if title should be displayed, and add it if necessary
+        // Calculate dynamic bar height based on the available space
+        int totalBars = currentNpcs.size();
+        int availableHeight = (preferredSize != null && preferredSize.height > 0) ? preferredSize.height : 0;
+        int barHeight = Math.max(14, Math.min(availableHeight / (totalBars + 1), 30)); // Dynamically scale bar height
+
+        // Render the title if enabled
         if (plugin.config.showTitle()) {
             graphics.setFont(new Font("Arial", Font.BOLD, 14));
             FontMetrics metrics = graphics.getFontMetrics();
             int titleX = (overlayWidth - metrics.stringWidth("Monster Monitor")) / 2;
             int titleY = yOffset + metrics.getAscent();
 
-            // Draw the title with a shadow for visibility
+            // Draw the title
             graphics.setColor(Color.BLACK);
             graphics.drawString("Monster Monitor", titleX + 1, titleY + 1);
             graphics.setColor(new Color(200, 150, 0));
@@ -114,12 +119,12 @@ public class MonsterMonitorOverlay extends Overlay {
             totalHeight += 10;
         }
 
-        // Display each tracked NPC with a progress bar
+        // Render progress bars for each tracked NPC
         for (NpcData npcData : currentNpcs) {
             if (npcData.getKillLimit() > 0) {
-                drawProgressBar(graphics, npcData, overlayWidth, 14, yOffset);
-                yOffset += 18;
-                totalHeight += 18;
+                drawProgressBar(graphics, npcData, overlayWidth, barHeight, yOffset);
+                yOffset += barHeight + 4; // Increment yOffset for the next bar
+                totalHeight += barHeight + 4; // Add bar height and spacing to total height
             }
         }
 
@@ -143,7 +148,7 @@ public class MonsterMonitorOverlay extends Overlay {
         // Calculate progress percentage and cap it at 100%
         double progressPercentage = Math.min(killsTowardLimit / (double) limit, 1.0);
 
-        // Interpolate color from red (0%) to orange (50%) to green (100%)
+        // Interpolate color
         Color barColor = interpolateColor(progressPercentage);
 
         int barWidth = overlayWidth - 10;
@@ -153,7 +158,7 @@ public class MonsterMonitorOverlay extends Overlay {
         graphics.setColor(new Color(60, 60, 60));
         graphics.fillRect(startX, yOffset, barWidth, barHeight);
 
-        // Draw the filled portion of the progress bar
+        // Draw the filled progress bar
         int filledWidth = (int) (progressPercentage * barWidth);
         graphics.setColor(barColor);
         graphics.fillRect(startX, yOffset, filledWidth, barHeight);
@@ -166,18 +171,17 @@ public class MonsterMonitorOverlay extends Overlay {
         drawText(graphics, npcData, killsTowardLimit, limit, overlayWidth, startX, yOffset, barHeight, barWidth);
     }
 
-
     /**
-     * Interpolates between three colors (Dark Red -> Dark Orange -> Dark Green) based on the specified ratio.
+     * Interpolates between three colors (red, orange, green) based on a ratio.
+     * The color transitions from red (0%) to orange (50%) to green (100%).
      *
-     * @param ratio The progress ratio (0.0 to 1.0).
-     * @return The interpolated color.
+     * @param ratio The progress ratio (0.0 to 1.0) used to determine the interpolated color.
+     * @return The interpolated color corresponding to the given ratio.
      */
     private Color interpolateColor(double ratio) {
-        // Define darker shades of red, orange, and green
-        Color darkRed = new Color(139, 0, 0);      // Dark red
-        Color darkOrange = new Color(204, 102, 0);  // Dark orange
-        Color darkGreen = new Color(0, 128, 0);     // Dark green
+        Color darkRed = new Color(139, 0, 0);
+        Color darkOrange = new Color(204, 102, 0);
+        Color darkGreen = new Color(0, 128, 0);
 
         Color startColor;
         Color endColor;
@@ -187,29 +191,28 @@ public class MonsterMonitorOverlay extends Overlay {
             // Interpolate between Dark Red (0%) and Dark Orange (50%)
             startColor = darkRed;
             endColor = darkOrange;
-            adjustedRatio = ratio * 2; // Scale to 0 - 1 within the first half
+            adjustedRatio = ratio * 2;
         } else {
             // Interpolate between Dark Orange (50%) and Dark Green (100%)
             startColor = darkOrange;
             endColor = darkGreen;
-            adjustedRatio = (ratio - 0.5) * 2; // Scale to 0 - 1 within the second half
+            adjustedRatio = (ratio - 0.5) * 2;
         }
 
         int red = (int) (startColor.getRed() * (1 - adjustedRatio) + endColor.getRed() * adjustedRatio);
         int green = (int) (startColor.getGreen() * (1 - adjustedRatio) + endColor.getGreen() * adjustedRatio);
 
-        // Set blue to 0 for all colors in this gradient
         return new Color(red, green, 0);
     }
 
-
     /**
-     * Draws the NPC name and progress count on top of the progress bar.
+     * Draws the NPC name and kill progress text on top of the progress bar.
+     * Dynamically adjusts font size, text alignment, and truncation based on available space.
      *
      * @param graphics         The Graphics2D object used for drawing.
      * @param npcData          The NPC data containing kill information.
-     * @param killsTowardLimit The current kill count.
-     * @param limit            The kill limit.
+     * @param killsTowardLimit The current kill count for the NPC.
+     * @param limit            The kill limit for the NPC.
      * @param overlayWidth     The width of the overlay.
      * @param startX           The starting X position for the text.
      * @param yOffset          The vertical offset for drawing the text.
@@ -217,21 +220,26 @@ public class MonsterMonitorOverlay extends Overlay {
      * @param barWidth         The width of the progress bar.
      */
     private void drawText(Graphics2D graphics, NpcData npcData, int killsTowardLimit, int limit, int overlayWidth, int startX, int yOffset, int barHeight, int barWidth) {
-        graphics.setFont(new Font("Arial", Font.BOLD, 11));
+        // Dynamically calculate font size based on bar height
+        int fontSize = Math.max(11, barHeight - 2);
+        graphics.setFont(new Font("Arial", Font.BOLD, fontSize));
         FontMetrics metrics = graphics.getFontMetrics();
-        int textY = yOffset + ((barHeight + metrics.getAscent() - metrics.getDescent()) / 2) + 1;
+        int textY = yOffset + ((barHeight + metrics.getAscent() - metrics.getDescent()) / 2);
 
-        // Draw the truncated NPC name on the left
-        String npcName = truncateName(npcData.getNpcName());
+        // Calculate available width for the NPC name and progress text
+        int availableTextWidth = barWidth - 10; // Leave some padding
+
+        // NPC Name (Left-aligned)
+        String npcName = truncateText(npcData.getNpcName(), availableTextWidth / 2, metrics); // Allocate half width
         graphics.setColor(Color.BLACK);
         graphics.drawString(npcName, startX + 4, textY + 1); // Shadow
         graphics.setColor(Color.LIGHT_GRAY);
         graphics.drawString(npcName, startX + 3, textY);
 
-        // Draw the progress text on the right
-        String progressText = formatNumber(killsTowardLimit) + "/" + formatNumber(limit);
+        // Kill Progress Text (Right-aligned)
+        String progressText = formatNumberDynamic(killsTowardLimit, limit, availableTextWidth / 2, metrics);
         int textWidth = metrics.stringWidth(progressText);
-        int textX = startX + barWidth - textWidth - 4;
+        int textX = startX + barWidth - textWidth - 4; // Align to the right
         graphics.setColor(Color.BLACK);
         graphics.drawString(progressText, textX + 1, textY + 1); // Shadow
         graphics.setColor(Color.LIGHT_GRAY);
@@ -239,13 +247,25 @@ public class MonsterMonitorOverlay extends Overlay {
     }
 
     /**
-     * Truncates the NPC name if it exceeds the specified character limit, appending an ellipsis if truncated.
+     * Truncates a string to fit within a specified width, appending an ellipsis if necessary.
      *
-     * @param name The original NPC name.
-     * @return A truncated name with ellipsis if it exceeds the limit, or the original name otherwise.
+     * @param text      The text to truncate.
+     * @param maxWidth  The maximum width allowed for the text.
+     * @param metrics   The FontMetrics used to measure the text width.
      */
-    private String truncateName(String name) {
-        return name.length() <= NAME_CHARACTER_LIMIT ? name : name.substring(0, NAME_CHARACTER_LIMIT - 3) + "...";
+    private String truncateText(String text, int maxWidth, FontMetrics metrics) {
+        if (metrics.stringWidth(text) <= maxWidth) {
+            return text;
+        }
+
+        // Truncate text and add ellipsis
+        for (int i = text.length() - 1; i > 0; i--) {
+            String truncated = text.substring(0, i) + "...";
+            if (metrics.stringWidth(truncated) <= maxWidth) {
+                return truncated;
+            }
+        }
+        return "..."; // Fallback
     }
 
     /**
@@ -262,5 +282,31 @@ public class MonsterMonitorOverlay extends Overlay {
         } else {
             return Integer.toString(number);
         }
+    }
+
+    /**
+     * Dynamically formats the kill progress text (e.g., "125/500" or "125K/500K").
+     * Expands or truncates the text based on available width.
+     *
+     * @param current   The current kill count.
+     * @param limit     The kill limit for the NPC.
+     * @param maxWidth  The maximum width allowed for the text.
+     * @param metrics   The FontMetrics used to measure the text width.
+     * @return A formatted string representing the kill progress, truncated if necessary.
+     */
+    private String formatNumberDynamic(int current, int limit, int maxWidth, FontMetrics metrics) {
+        // Check if the full text fits
+        String fullText = String.format("%d/%d", current, limit);
+        if (metrics.stringWidth(fullText) <= maxWidth) {
+            return fullText; // Return full text if it fits
+        }
+
+        // Use shortened format (e.g., 125K/500K)
+        String shortText = formatNumber(current) + "/" + formatNumber(limit);
+        if (metrics.stringWidth(shortText) <= maxWidth) {
+            return shortText;
+        }
+
+        return "..."; // Fallback
     }
 }

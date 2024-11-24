@@ -18,7 +18,7 @@ import net.runelite.client.eventbus.Subscribe;
 
 /**
  * Tracks and manages NPC deaths and interactions for Monster Monitor.
- * This class handles tracking of kills and ensures that ignored NPCs are not logged.
+ * This class handles tracking of kills, including special NPCs that do not fire the ActorDeath event.
  */
 public class DeathTracker {
     private final Client client;
@@ -26,6 +26,7 @@ public class DeathTracker {
     private final MonsterMonitorLogger logger;
     private final MonsterMonitorPanel panel;
     private final ClientThread clientThread;
+    private final SpecialNpcTracker specialNpcTracker;
 
     // Tracks NPCs with recent player interactions
     private final Map<Integer, String> lastKnownNpcName = new ConcurrentHashMap<>();
@@ -41,35 +42,35 @@ public class DeathTracker {
             Map.entry("Alchemical Hydra", Set.of(8622)),
             Map.entry("Hydra", Set.of(8609)),
             Map.entry("Phantom Muspah", Set.of(12082)),
-            Map.entry("The Hueycoatl", Set.of(14013)),
             Map.entry("Dusk", Set.of(7889)),
             Map.entry("Abyssal Sire", Set.of(5891)),
             Map.entry("Kephri", Set.of(11722)),
             Map.entry("Verzik Vitur", Set.of(10832, 8371, 10849)),
-            Map.entry("Great Olm", Set.of(7551)),
-			Map.entry("Amoxliatl", Set.of(13685))
+            Map.entry("Great Olm", Set.of(7551))
     );
 
     private static final Map<String, Set<Integer>> EXCLUDED_NPC_IDS = Map.ofEntries(
-            Map.entry("The Hueycoatl", Set.of(14009, 14010, 14011, 14012)),
-            Map.entry("Hueycoatl Tail", Set.of(14014)),
-            Map.entry("Hueycoatl Tail Broken", Set.of(14015)),
-            Map.entry("Hueycoatl Body", Set.of(14017)),
+            Map.entry("The Hueycoatl", Set.of(14010, 14011, 14012, 14013)),
+            Map.entry("Hueycoatl Tail", Set.of(14014, 14015)),
+            Map.entry("Hueycoatl Tail (Broken)", Set.of(14014, 14015)),
+            Map.entry("Hueycoatl body", Set.of(14017, 14018)),
             Map.entry("Dawn", Set.of(7888)),
-			Map.entry("Unstable Ice", Set.of(13688)),
+            Map.entry("Unstable ice", Set.of(13688)),
             Map.entry("Cracked Ice", Set.of(13026)),
+            Map.entry("Rubble", Set.of(14018)),
             Map.entry("Great Olm Right Claw", Set.of(7550, 7553)),
             Map.entry("Great Olm Left Claw", Set.of(7552, 7555))
-
     );
 
     @Inject
-    public DeathTracker(Client client, MonsterMonitorPlugin plugin, MonsterMonitorLogger logger, MonsterMonitorPanel panel, ClientThread clientThread) {
+    public DeathTracker(Client client, MonsterMonitorPlugin plugin, MonsterMonitorLogger logger,
+                        MonsterMonitorPanel panel, ClientThread clientThread, SpecialNpcTracker specialNpcTracker) {
         this.client = client;
         this.plugin = plugin;
         this.logger = logger;
         this.panel = panel;
         this.clientThread = clientThread;
+        this.specialNpcTracker = specialNpcTracker;
     }
 
     @Subscribe
@@ -85,6 +86,11 @@ public class DeathTracker {
             lastKnownNpcName.put(npcIndex, npcName);
             lastInteractionTicks.put(npcIndex, client.getTickCount());
             wasNpcEngaged.put(npcIndex, false);
+
+            // Start tracking if the NPC is a special NPC
+            if (specialNpcTracker.isSpecialNpc(npc)) {
+                specialNpcTracker.trackNpc(npc);
+            }
         }
     }
 
@@ -112,33 +118,72 @@ public class DeathTracker {
             NPC npc = (NPC) actor;
             int npcIndex = npc.getIndex();
             int npcId = npc.getId();
-            String npcName = lastKnownNpcName.getOrDefault(npcIndex, "Unnamed NPC");
+            String npcName = normalizeName(lastKnownNpcName.getOrDefault(npcIndex, npc.getName()));
 
             // Skip logging if the NPC is in the exclusion list
-            if (EXCLUDED_NPC_IDS.containsKey(npcName) && EXCLUDED_NPC_IDS.get(npcName).contains(npcId)) {
+            if (isExcludedNpc(npcName, npcId)) {
                 return;
             }
 
             // Check if this NPC is a multi-phase boss with intermediate phases
             if (FINAL_PHASE_IDS.containsKey(npcName)) {
                 Set<Integer> finalIds = FINAL_PHASE_IDS.get(npcName);
-                // Only log if the NPC ID is one of the final phase IDs for this multi-phase boss
                 if (!finalIds.contains(npcId)) {
                     return; // Skip logging for intermediate phases
                 }
             }
 
-            // Log death only if the player was recently engaged with the NPC and it's in the final phase or a regular NPC
+            // Log death for standard or special NPCs
             if (wasNpcEngaged.getOrDefault(npcIndex, false) && isInteractionValid(npcIndex)) {
                 clientThread.invoke(() -> plugin.logDeath(npcName));
-                cleanupAfterLogging(npcIndex);
+            }
+
+            // Clean up tracking for this NPC
+            cleanupAfterLogging(npcIndex);
+        }
+    }
+
+    /**
+     * Normalizes an NPC name by stripping out color tags or extra formatting.
+     *
+     * @param npcName The original name of the NPC.
+     * @return The normalized NPC name.
+     */
+    private String normalizeName(String npcName) {
+        if (npcName == null) {
+            return "Unnamed NPC";
+        }
+        return npcName.replaceAll("<.*?>", "").trim(); // Remove color tags and extra whitespace
+    }
+
+    /**
+     * Checks if an NPC should be excluded from logging based on its name and ID.
+     *
+     * @param npcName The name of the NPC.
+     * @param npcId   The ID of the NPC.
+     * @return True if the NPC is excluded, otherwise false.
+     */
+    private boolean isExcludedNpc(String npcName, int npcId) {
+        // Check by name and associated IDs
+        if (EXCLUDED_NPC_IDS.containsKey(npcName)) {
+            return EXCLUDED_NPC_IDS.get(npcName).contains(npcId);
+        }
+
+        for (Set<Integer> excludedIds : EXCLUDED_NPC_IDS.values()) {
+            if (excludedIds.contains(npcId)) {
+                return true;
             }
         }
+
+        return false;
     }
 
     @Subscribe
     public void onGameTick(GameTick event) {
         int currentTick = client.getTickCount();
+
+        // Update health-based tracking for special NPCs
+        specialNpcTracker.updateTrackedNpcs();
 
         // Clean up entries where interaction has timed out
         lastInteractionTicks.keySet().removeIf(npcIndex ->
