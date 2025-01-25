@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 @PluginDescriptor(
         name = "Monster Monitor",
         description = "Tracks NPC kills and allows setting kill limits",
-        tags = {"npc", "kill", "limit"}
+        tags = {"npc", "kill", "limit, mm"}
 )
 public class MonsterMonitorPlugin extends Plugin
 {
@@ -70,6 +70,16 @@ public class MonsterMonitorPlugin extends Plugin
     MonsterMonitorConfig provideConfig(ConfigManager configManager)
     {
         return configManager.getConfig(MonsterMonitorConfig.class);
+    }
+
+    @Inject
+    private ConfigManager configManager;
+
+    public void resetProgressBarColors() {
+        configManager.setConfiguration("monster monitor", "progressBarStartColor", new Color(139, 0, 0));
+        configManager.setConfiguration("monster monitor", "progressBarMidColor", new Color(204, 102, 0));
+        configManager.setConfiguration("monster monitor", "progressBarEndColor", new Color(0, 128, 0));
+        updateUI();
     }
 
     /**
@@ -314,7 +324,13 @@ public class MonsterMonitorPlugin extends Plugin
             case "showChatNotifications":
             case "customNotificationMessage":
             case "enableSoundAlerts":
+            case "progressBarStartColor":
+            case "progressBarMidColor":
+            case "progressBarEndColor":
                 updateUI();
+                break;
+            case "resetProgressBarColors":
+                resetProgressBarColors();
                 break;
         }
     }

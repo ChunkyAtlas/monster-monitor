@@ -3,11 +3,12 @@ package com.monstermonitor;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
+import java.awt.*;
 
 /**
  * The MonsterMonitorConfig interface defines the configuration options for Monster Monitor.
- * It allows users to toggle settings such as displaying the overlay, receiving notifications
- * when kill limits are reached, and customizing the notification messages.
+ * It allows users to customize settings such as progress bar colors, overlay visibility,
+ * and kill limit notifications.
  */
 @ConfigGroup("monster monitor")
 public interface MonsterMonitorConfig extends Config {
@@ -103,5 +104,61 @@ public interface MonsterMonitorConfig extends Config {
     )
     default boolean showTitle() {
         return true;
+    }
+    /**
+     * Configures the colors for the progress bar.
+     *
+     * @return the start color of the progress bar.
+     */
+    @ConfigItem(
+            keyName = "progressBarStartColor",
+            name = "Progress Bar Start Color",
+            description = "Select the color for the start of the progress bar.",
+            position = 4
+    )
+    default Color progressBarStartColor() {
+        return new Color(139, 0, 0); // Dark red
+    }
+
+    /**
+     * Configures the midpoint color for the progress bar.
+     *
+     * @return the midpoint color of the progress bar.
+     */
+    @ConfigItem(
+            keyName = "progressBarMidColor",
+            name = "Progress Bar Midpoint Color",
+            description = "Select the color for the midpoint of the progress bar.",
+            position = 5
+    )
+    default Color progressBarMidColor() {
+        return new Color(204, 102, 0); // Dark orange
+    }
+
+    /**
+     * Configures the end color for the progress bar.
+     *
+     * @return the end color of the progress bar.
+     */
+    @ConfigItem(
+            keyName = "progressBarEndColor",
+            name = "Progress Bar End Color",
+            description = "Select the color for the end of the progress bar.",
+            position = 6
+    )
+    default Color progressBarEndColor() {
+        return new Color(0, 128, 0); // Dark green
+    }
+    /**
+     * Adds a button to reset progress bar colors to their default values.
+     */
+    @ConfigItem(
+            keyName = "resetProgressBarColors",
+            name = "Reset Colors",
+            description = "Click to reset all progress bar colors to their default values.",
+            position = 10
+    )
+    default Button resetProgressBarColors() {
+        return new Button("Reset Colors");
     }
 }

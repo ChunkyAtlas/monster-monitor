@@ -29,6 +29,7 @@ public class MonsterMonitorOverlay extends Overlay {
     @Getter
     private final Client client;
     private final MonsterMonitorPlugin plugin;
+    private final MonsterMonitorConfig config;
     private final PanelComponent panelComponent = new PanelComponent();
 
     @Inject
@@ -39,11 +40,13 @@ public class MonsterMonitorOverlay extends Overlay {
      *
      * @param client The RuneLite client instance.
      * @param plugin The MonsterMonitorPlugin instance that this overlay is part of.
+     * @param config The MonsterMonitorConfig instance for user settings.
      */
     @Inject
-    public MonsterMonitorOverlay(Client client, MonsterMonitorPlugin plugin) {
+    public MonsterMonitorOverlay(Client client, MonsterMonitorPlugin plugin, MonsterMonitorConfig config) {
         this.client = client;
         this.plugin = plugin;
+        this.config = config;
         setPosition(OverlayPosition.TOP_CENTER);
         setLayer(OverlayLayer.ABOVE_SCENE); // Layer the overlay above widgets
         setResizable(true); // Allow users to resize the overlay
@@ -148,7 +151,7 @@ public class MonsterMonitorOverlay extends Overlay {
         // Calculate progress percentage and cap it at 100%
         double progressPercentage = Math.min(killsTowardLimit / (double) limit, 1.0);
 
-        // Interpolate color
+        // Interpolate color based on custom configuration
         Color barColor = interpolateColor(progressPercentage);
 
         int barWidth = overlayWidth - 10;
@@ -172,37 +175,43 @@ public class MonsterMonitorOverlay extends Overlay {
     }
 
     /**
-     * Interpolates between three colors (red, orange, green) based on a ratio.
-     * The color transitions from red (0%) to orange (50%) to green (100%).
+     * Interpolates between three colors (customizable) based on a ratio.
+     * The color transitions from the start color (0%) to the midpoint color (50%) to the end color (100%).
      *
      * @param ratio The progress ratio (0.0 to 1.0) used to determine the interpolated color.
      * @return The interpolated color corresponding to the given ratio.
      */
     private Color interpolateColor(double ratio) {
-        Color darkRed = new Color(139, 0, 0);
-        Color darkOrange = new Color(204, 102, 0);
-        Color darkGreen = new Color(0, 128, 0);
+        Color startColor = config.progressBarStartColor();
+        Color midColor = config.progressBarMidColor();
+        Color endColor = config.progressBarEndColor();
 
-        Color startColor;
-        Color endColor;
-        double adjustedRatio;
-
+        Color interpolatedColor;
         if (ratio <= 0.5) {
-            // Interpolate between Dark Red (0%) and Dark Orange (50%)
-            startColor = darkRed;
-            endColor = darkOrange;
-            adjustedRatio = ratio * 2;
+            // Interpolate between Start Color and Midpoint Color
+            interpolatedColor = interpolate(startColor, midColor, ratio * 2);
         } else {
-            // Interpolate between Dark Orange (50%) and Dark Green (100%)
-            startColor = darkOrange;
-            endColor = darkGreen;
-            adjustedRatio = (ratio - 0.5) * 2;
+            // Interpolate between Midpoint Color and End Color
+            interpolatedColor = interpolate(midColor, endColor, (ratio - 0.5) * 2);
         }
 
-        int red = (int) (startColor.getRed() * (1 - adjustedRatio) + endColor.getRed() * adjustedRatio);
-        int green = (int) (startColor.getGreen() * (1 - adjustedRatio) + endColor.getGreen() * adjustedRatio);
+        return interpolatedColor;
+    }
 
-        return new Color(red, green, 0);
+    /**
+     * Interpolates between two colors based on a given ratio.
+     *
+     * @param startColor The starting color.
+     * @param endColor   The ending color.
+     * @param ratio      The interpolation ratio (0.0 to 1.0).
+     * @return The interpolated color.
+     */
+    private Color interpolate(Color startColor, Color endColor, double ratio) {
+        int red = (int) (startColor.getRed() * (1 - ratio) + endColor.getRed() * ratio);
+        int green = (int) (startColor.getGreen() * (1 - ratio) + endColor.getGreen() * ratio);
+        int blue = (int) (startColor.getBlue() * (1 - ratio) + endColor.getBlue() * ratio);
+
+        return new Color(red, green, blue);
     }
 
     /**
