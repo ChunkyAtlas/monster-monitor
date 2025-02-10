@@ -50,7 +50,7 @@ public class DeathTracker {
     );
 
     private static final Map<String, Set<Integer>> EXCLUDED_NPC_IDS = Map.ofEntries(
-            Map.entry("The Hueycoatl", Set.of(14010, 14011, 14012, 14013)),
+            Map.entry("The Hueycoatl", Set.of(14010, 14011, 14013)),
             Map.entry("Hueycoatl Tail", Set.of(14014, 14015)),
             Map.entry("Hueycoatl Tail (Broken)", Set.of(14014, 14015)),
             Map.entry("Hueycoatl body", Set.of(14017, 14018)),
@@ -125,7 +125,13 @@ public class DeathTracker {
                 return;
             }
 
-            // Check if this NPC is a multi-phase boss with intermediate phases
+            // For special NPCs, let SpecialNpcTracker handle logging
+            if (specialNpcTracker.isSpecialNpc(npc)) {
+                cleanupAfterLogging(npcIndex);
+                return;
+            }
+
+            // For multi-phase bosses, only log if the NPC is in its final phase
             if (FINAL_PHASE_IDS.containsKey(npcName)) {
                 Set<Integer> finalIds = FINAL_PHASE_IDS.get(npcName);
                 if (!finalIds.contains(npcId)) {
@@ -133,7 +139,7 @@ public class DeathTracker {
                 }
             }
 
-            // Log death for standard or special NPCs
+            // Log death for standard NPCs if the interaction was valid
             if (wasNpcEngaged.getOrDefault(npcIndex, false) && isInteractionValid(npcIndex)) {
                 clientThread.invoke(() -> plugin.logDeath(npcName));
             }

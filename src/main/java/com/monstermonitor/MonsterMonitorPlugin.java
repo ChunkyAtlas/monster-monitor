@@ -63,6 +63,11 @@ public class MonsterMonitorPlugin extends Plugin
     @Inject
     MonsterMonitorMenuHandler menuHandler;
 
+    @Inject
+    private MonsterMonitorPopup popup;
+
+    @Inject
+    private SpecialNpcTracker specialNpcTracker;
     private NavigationButton navButton;
     private boolean initialized = false;
 
@@ -123,6 +128,15 @@ public class MonsterMonitorPlugin extends Plugin
         // Unregister DeathTracker and menu handler to stop event handling.
         eventBus.unregister(deathTracker);
         eventBus.unregister(menuHandler);
+
+        // Unregister SpecialNpcTracker
+        eventBus.unregister(specialNpcTracker);
+        specialNpcTracker.shutdown();
+
+        // Unregister MonsterMonitorPopup
+        if (popup != null) {
+            popup.shutdownPopup();
+        }
 
         // Save the current log state if the logger was initialized.
         if (logger != null && initialized)
@@ -218,6 +232,10 @@ public class MonsterMonitorPlugin extends Plugin
                     String message = "<col=ff0000>" + config.customNotificationMessage().replace("{npc}", npcName) + "</col>";
                     client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", message, null);
                 }
+
+                if (config.showPopup()) {
+                    popup.showPopup(npcName);
+                }
             }
         }
     }
@@ -269,11 +287,16 @@ public class MonsterMonitorPlugin extends Plugin
      */
     public void setNpcToMonitor(String npcName, int killLimit) {
         NpcData npcData = logger.getNpcLog().computeIfAbsent(npcName, NpcData::new);
+        boolean limitChanged = npcData.getKillLimit() != killLimit; // Check if limit changed
 
         npcData.setKillLimit(killLimit);
         npcData.setLimitSet(true); // Ensure the limit is set
         npcData.setIgnored(false); // Ensure the NPC is not ignored
         npcData.resetKillCountForLimit(); // Reset progress towards the limit if changed
+
+        if (limitChanged) {
+            checkKillLimit(npcName);
+        }
 
         // Update the logger with the new NPC data and refresh the UI.
         logger.updateNpcData(npcData);
@@ -327,6 +350,7 @@ public class MonsterMonitorPlugin extends Plugin
             case "progressBarStartColor":
             case "progressBarMidColor":
             case "progressBarEndColor":
+            case "showPopup":
                 updateUI();
                 break;
             case "resetProgressBarColors":

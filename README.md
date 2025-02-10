@@ -2,33 +2,38 @@
 
 ## Overview
 
-**Monster Monitor** is a RuneLite plugin that enhances gameplay by allowing players to track and manage their NPC interactions, log kill counts, and set personalized kill limits. It’s designed for players who want to monitor progress on specific NPC goals, track rare drops, or reach boss milestones. The plugin provides a user-friendly overlay, customizable options, and right-click menu entries for convenient tracking.
+**Monster Monitor** is a RuneLite plugin that enhances your gameplay by tracking and managing your NPC interactions, logging kill counts, and setting personalized kill limits. Designed for players who want to monitor progress on specific NPC goals, track rare drops, or achieve boss milestones, the plugin provides a user-friendly overlay, customizable options, and intuitive right-click menu entries for easy management.
 
 ## Features
 
 - **Automatic Kill Logging**:
-    - Tracks and logs each NPC kill, recording the NPC's name, total kill count, and other details.
-    - Logs are saved per player for long-term tracking and can be viewed in the plugin’s panel.
+    - Automatically tracks and logs every NPC kill, recording the NPC's name, total kill count, and other details.
+    - Logs are maintained on a per-player basis for long-term tracking and can be viewed within the plugin’s panel.
 
-- **Set Custom Kill Limits**:
-    - Allows players to set custom kill limits for any NPC.
-    - Notifications are triggered when kill limits are reached, providing progress feedback.
-    - Different kill limits can be set for multiple NPCs independently.
+- **Custom Kill Limits**:
+    - Set personalized kill limits for any NPC.
+    - Receive notifications when kill limits are reached, offering real-time progress feedback.
+    - Supports independent kill limits for multiple NPCs.
 
 - **Dynamic Overlay**:
-    - Displays actively tracked NPCs, their current kill count, and progress toward any set kill limits.
-    - A progress bar shows kill limits, with configurations for visibility in the overlay.
+    - Displays actively tracked NPCs along with their current kill counts and progress toward any set kill limits.
+    - Features a progress bar that visually represents kill limits, with configurable visibility options.
+
+- **Popup Notifications**:
+    - New kill limit popup notifications alert you when a set kill limit is reached.
+    - Popups queue properly to display multiple notifications in order.
+    - A configurable toggle in the settings allows you to enable or disable popup notifications.
 
 - **In-Depth Configurations**:
-    - **Notification Customization**: Notifications can be configured to show in chat, with sound alerts, or both. Customize the message format, including dynamic NPC names.
-    - **Right-Click Menu Options**: Quickly add “Monitor” or “Ignore” options to NPCs via right-click, streamlining tracking or ignoring NPCs during gameplay.
+    - **Notification Customization**: Configure notifications to appear in chat, with sound alerts, or as popup messages. Personalize the message format with dynamic NPC names.
+    - **Right-Click Menu Options**: Quickly add “Monitor” or “Ignore” options to NPCs via right-click, streamlining tracking or ignoring during gameplay.
 
 - **Panel Controls**:
-    - The plugin panel provides tools for managing NPC tracking:
-        - **Kill Count Reset**: Reset kill counts or remove kill limits for any NPC.
-        - **NPC Ignoring**: Ignore specific NPCs, which prevents them from appearing in the overlay.
+    - Manage NPC tracking through a dedicated panel:
+        - **Reset Kill Counts**: Reset kill counts or remove kill limits for any NPC.
+        - **NPC Ignoring**: Ignore specific NPCs so they do not appear in the overlay.
         - **Edit NPC Data**: Directly modify kill counts and limits for tracked NPCs.
-        - **Expand/Collapse Options**: For easier viewing, expand or collapse all NPC entries.
+        - **Expand/Collapse Options**: Toggle the detailed view of NPC entries for easier navigation.
 
 ### Log File Locations
 
@@ -37,20 +42,20 @@
 ## Usage
 
 1. **Track NPC Kills**:
-    - Once the plugin is installed, it will automatically track NPC kills as you play.
+    - Once installed, the plugin automatically tracks your NPC kills during gameplay.
 
 2. **Set Kill Limits**:
-    - Right-click on an NPC in the plugin panel to set a kill limit. Notifications will appear when the limit is reached.
+    - Right-click on an NPC in the plugin panel to set a kill limit. Notifications and popups will alert you once the limit is reached.
 
 3. **View Kill Counts**:
-    - View tracked kill counts and limits in the overlay on the RuneLite client.
+    - The overlay on the RuneLite client displays your tracked kill counts and progress toward any set limits.
 
 4. **Reset Kill Counts or Limits**:
     - Right-click on an NPC in the plugin panel to reset its kill count or remove it from tracking.
 
 ## Contribution
 
-Contributions are welcome! If you find any bugs or have suggestions for improvements, feel free to open an issue or submit a pull request.
+Contributions are welcome! If you find any bugs or have suggestions for improvements, please open an issue or submit a pull request.
 
 ### How to Contribute
 
@@ -63,4 +68,4 @@ Contributions are welcome! If you find any bugs or have suggestions for improvem
 
 ## Contact
 
-For questions or support, open an issue on GitHub or email at monstermonitor@proton.me!
+For questions or support, please open an issue on GitHub or email monstermonitor@proton.me!

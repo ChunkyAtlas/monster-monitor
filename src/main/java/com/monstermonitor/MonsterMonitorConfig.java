@@ -161,4 +161,18 @@ public interface MonsterMonitorConfig extends Config {
     default Button resetProgressBarColors() {
         return new Button("Reset Colors");
     }
+
+    /**
+     * Configures whether the popup notification should be displayed when a kill limit is reached.
+     *
+     * @return true if the popup should be shown, false otherwise
+     */
+    @ConfigItem(
+            keyName = "showPopup",
+            name = "Show Popup",
+            description = "Display a popup when the kill limit is reached"
+    )
+    default boolean showPopup() {
+        return true;
+    }
 }
